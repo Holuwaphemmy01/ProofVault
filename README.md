@@ -13,4 +13,13 @@ ProofVault uses confidential computation to protect sensitive treasury data. Pro
 This makes ProofVault a privacy-preserving proof-of-reserves system for interoperable assets on Flare.
 
 
-ProofVault addresses the lack of private, cross-chain proof-of-reserves in crypto. Projects may hold reserves across BTC, XRP, DOGE, FLR, and stablecoins, but proving solvency often requires exposing wallet addresses, exact balances, or treasury strategy. ProofVault allows projects to prove that their reserves meet a required threshold while keeping sensitive treasury data private.
+
+## Problem Statement
+
+Crypto projects, exchanges, DAOs, bridges, and asset-backed protocols often claim that they have enough reserves to back user deposits, token supply, or treasury obligations. However, users usually have no simple way to verify whether these claims are true, especially when the reserves are spread across multiple blockchains such as Bitcoin, XRP Ledger, Dogecoin, Ethereum, Flare, and stablecoin networks.
+
+Existing proof-of-reserve approaches are often limited, manual, or overly transparent. Some require projects to publicly reveal wallet addresses and exact balances, which can expose treasury strategy, create security risks, and allow competitors or attackers to monitor fund movement. Other approaches rely heavily on screenshots, centralized attestations, or periodic audits, which do not provide continuous, verifiable, on-chain assurance.
+
+This creates a trust gap: users need confidence that a project is solvent, while projects need a privacy-preserving way to prove reserve health without exposing sensitive treasury details.
+
+ProofVault solves this by enabling confidential cross-chain proof-of-reserves. Projects can prove that their total reserves meet a required threshold across multiple assets and chains, while only publishing a verified pass/fail result, proof hash, timestamp, and reserve status on-chain.
