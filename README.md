@@ -23,3 +23,41 @@ Existing proof-of-reserve approaches are often limited, manual, or overly transp
 This creates a trust gap: users need confidence that a project is solvent, while projects need a privacy-preserving way to prove reserve health without exposing sensitive treasury details.
 
 ProofVault solves this by enabling confidential cross-chain proof-of-reserves. Projects can prove that their total reserves meet a required threshold across multiple assets and chains, while only publishing a verified pass/fail result, proof hash, timestamp, and reserve status on-chain.
+
+
+## MVP Scope and Non-Goals
+
+### Hackathon MVP Scope
+
+For the hackathon, ProofVault will focus on a simple but complete proof-of-reserves flow.
+
+The MVP will allow a project to create a reserve proof request, provide reserve wallet information, define a required reserve threshold, run a confidential reserve verification process, and publish a signed proof result on-chain.
+
+The MVP will include:
+
+1. A basic project dashboard for creating a reserve proof request.
+2. Input fields for project name, required reserve amount, supported asset type, and wallet address.
+3. A confidential verifier service that simulates private reserve calculation.
+4. Price conversion logic for estimating reserve value in USD.
+5. A smart contract that stores the final proof result.
+6. A public verification page where users can view the project’s reserve status.
+7. A demo flow showing how a project proves it has enough reserves without exposing sensitive treasury details.
+
+The MVP is designed to prove the core idea: a project should be able to prove solvency across assets while keeping sensitive reserve data private.
+
+### Non-Goals for the Hackathon
+
+To avoid scope creep, the following features will not be built during the hackathon MVP:
+
+1. Full production-grade proof-of-reserves audit system.
+2. Real exchange integrations.
+3. Full support for every blockchain and wallet type.
+4. Advanced Merkle-tree user liability proofs.
+5. Full institutional compliance dashboard.
+6. Automated continuous monitoring for all wallets.
+7. Multi-organization team management.
+8. Paid subscription billing.
+9. Full legal/audit reporting.
+10. Production security certification.
+
+These features are important, but they are post-hackathon improvements. The hackathon version will focus only on proving the main technical and product concept clearly.
