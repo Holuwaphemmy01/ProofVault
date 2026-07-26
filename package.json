@@ -1,0 +1,17 @@
+{
+  "name": "proofvault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Confidential cross-chain proof-of-reserves platform built for Flare",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev:web": "pnpm --filter @proofvault/web dev",
+    "dev:api": "pnpm --filter @proofvault/api dev",
+    "dev:worker": "pnpm --filter @proofvault/worker dev",
+    "build:web": "pnpm --filter @proofvault/web build",
+    "build:api": "pnpm --filter @proofvault/api build",
+    "build:worker": "pnpm --filter @proofvault/worker build",
+    "compile:contracts": "pnpm --filter @proofvault/contracts compile",
+    "test:contracts": "pnpm --filter @proofvault/contracts test"
+  }
+}

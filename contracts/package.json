@@ -1,0 +1,16 @@
+{
+  "name": "@proofvault/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "dotenv": "^17.2.1",
+    "hardhat": "^2.26.1",
+    "typescript": "^5.8.3"
+  }
+}
