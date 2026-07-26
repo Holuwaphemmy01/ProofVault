@@ -163,3 +163,35 @@ The Public Verifier is successful when:
 3. They can see whether the proof passed or failed.
 4. They can view the proof hash and timestamp.
 5. They can understand the result without needing advanced technical knowledge.
+
+## Demo Acceptance Criteria
+
+The ProofVault demo is successful when a user can complete the full proof-of-reserves journey from creating a confidential reserve proof to viewing the public verification result.
+
+The final demo must show:
+
+- A landing page that explains ProofVault clearly.
+- Role selection for Reserve Prover and Public Verifier.
+- A company dashboard for managing proof activity.
+- A reserve proof creation flow.
+- Cross-chain reserve source setup.
+- A private verification step.
+- A generated proof result with proof hash and timestamp.
+- A public verification page that shows reserve status without exposing sensitive treasury data.
+
+The public proof result must show only:
+
+- Reserve status
+- Proof hash
+- Timestamp
+- Supported assets
+- On-chain proof reference
+
+The public result must not expose:
+
+- Full wallet addresses
+- Exact wallet balances
+- Treasury movement
+- Internal reserve strategy
+
+Full demo acceptance checklist is available in [`docs/demo-acceptance-criteria.md`](./docs/demo-acceptance-criteria.md).
