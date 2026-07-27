@@ -96,6 +96,10 @@ pnpm dev:worker
 
 ProofVault separates private reserve inputs from public proof results. Public outputs must not expose wallet strategy, exact private reserve composition, full wallet addresses, exact balances, treasury movement, or internal reserve calculations. See [Privacy Boundary](./docs/privacy-boundary.md).
 
+## Flare Integration Plan
+
+ProofVault's MVP integration plan uses real minimal FTSO, FDC, and FCC paths for the primary demo, with clearly labelled fallback data only if live testnet services fail. See [Flare Integration Plan](./docs/flare-integration-plan.md).
+
 ## Documentation Links
 
 - [Demo Acceptance Criteria](./docs/demo-acceptance-criteria.md)
@@ -103,6 +107,7 @@ ProofVault separates private reserve inputs from public proof results. Public ou
 - [Product Requirements](./docs/product-requirements.md)
 - [Architecture](./docs/architecture.md)
 - [Privacy Boundary](./docs/privacy-boundary.md)
+- [Flare Integration Plan](./docs/flare-integration-plan.md)
 - [Demo Script](./docs/demo-script.md)
 
 ## Project Status
