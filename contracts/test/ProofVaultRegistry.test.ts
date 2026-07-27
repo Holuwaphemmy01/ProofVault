@@ -15,13 +15,18 @@ describe("ProofVaultRegistry", function () {
   const proofRequestMetadataHash = ethers.keccak256(
     ethers.toUtf8Bytes('{"project":"atlasx-exchange","proofType":"reserve-threshold"}'),
   );
+  const passProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-pass"));
+  const failProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-fail"));
+  const resultMetadataHash = ethers.keccak256(
+    ethers.toUtf8Bytes('{"requestId":1,"source":"proofvault-worker"}'),
+  );
 
   async function deployRegistry() {
-    const [owner, other] = await ethers.getSigners();
+    const [owner, worker, other] = await ethers.getSigners();
     const ProofVaultRegistry = await ethers.getContractFactory("ProofVaultRegistry");
     const registry = await ProofVaultRegistry.deploy();
 
-    return { registry, owner, other };
+    return { registry, owner, worker, other };
   }
 
   async function registerDefaultProject(registry: Awaited<ReturnType<typeof deployRegistry>>["registry"]) {
@@ -37,6 +42,52 @@ describe("ProofVaultRegistry", function () {
       proofRequestMetadataHash,
     );
   }
+
+  async function registerProjectAndCreateRequest(
+    registry: Awaited<ReturnType<typeof deployRegistry>>["registry"],
+  ) {
+    await registerDefaultProject(registry);
+    await createDefaultProofRequest(registry);
+  }
+
+  async function authorizeWorker(
+    registry: Awaited<ReturnType<typeof deployRegistry>>["registry"],
+    workerAddress: string,
+  ) {
+    return registry.setWorkerSigner(workerAddress, true);
+  }
+
+  it("sets contract owner to the deployer", async function () {
+    const { registry, owner } = await deployRegistry();
+
+    expect(await registry.contractOwner()).to.equal(owner.address);
+  });
+
+  it("allows the contract owner to authorize a worker signer", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await expect(authorizeWorker(registry, worker.address))
+      .to.emit(registry, "WorkerSignerUpdated")
+      .withArgs(worker.address, true, anyValue);
+
+    expect(await registry.isAuthorizedWorkerSigner(worker.address)).to.equal(true);
+  });
+
+  it("rejects worker signer authorization by a non-owner", async function () {
+    const { registry, worker, other } = await deployRegistry();
+
+    await expect(
+      registry.connect(other).setWorkerSigner(worker.address, true),
+    ).to.be.revertedWith("Only contract owner");
+  });
+
+  it("rejects authorizing address zero as a worker signer", async function () {
+    const { registry } = await deployRegistry();
+
+    await expect(
+      registry.setWorkerSigner(ethers.ZeroAddress, true),
+    ).to.be.revertedWith("Worker signer required");
+  });
 
   it("registers a project", async function () {
     const { registry, owner } = await deployRegistry();
@@ -265,50 +316,113 @@ describe("ProofVaultRegistry", function () {
     expect(await registry.getProofRequestCount()).to.equal(1);
   });
 
-  it("allows a project owner to submit a proof result", async function () {
-    const { registry, owner } = await deployRegistry();
-    const proofHash = ethers.keccak256(ethers.toUtf8Bytes("proofvault-proof-result"));
+  it("allows an authorized worker signer to submit a PASS proof result", async function () {
+    const { registry, worker } = await deployRegistry();
+    const projectId = ethers.keccak256(ethers.toUtf8Bytes(projectSlug));
 
-    await registerDefaultProject(registry);
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+
     await expect(
-      registry.submitProofResult(
-        projectSlug,
-        proofHash,
-        true,
-        "passed",
-        "BTC,FLR",
-        "ipfs://proofvault-demo-metadata",
+      registry.connect(worker).submitProofResult(
+        1,
+        passProofHash,
+        0,
+        resultMetadataHash,
       ),
     )
       .to.emit(registry, "ProofResultSubmitted")
       .withArgs(
         1,
-        ethers.keccak256(ethers.toUtf8Bytes(projectSlug)),
-        proofHash,
+        1,
+        projectId,
+        passProofHash,
+        0,
         true,
-        "passed",
+        resultMetadataHash,
+        worker.address,
         anyValue,
       );
 
-    expect(await registry.getProofCount()).to.equal(1);
+    const proofResult = await registry.getProofResult(1);
+    const proofRequest = await registry.getProofRequest(1);
+
+    expect(proofResult.thresholdMet).to.equal(true);
+    expect(proofResult.outcome).to.equal(0);
+    expect(proofRequest.status).to.equal(2);
   });
 
-  it("rejects proof result submission by a non-owner", async function () {
-    const { registry, other } = await deployRegistry();
-    const proofHash = ethers.keccak256(ethers.toUtf8Bytes("proofvault-proof-result"));
+  it("allows an authorized worker signer to submit a FAIL proof result", async function () {
+    const { registry, worker } = await deployRegistry();
 
-    await registerDefaultProject(registry);
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+
+    await registry.connect(worker).submitProofResult(1, failProofHash, 1, resultMetadataHash);
+
+    const proofResult = await registry.getProofResult(1);
+
+    expect(proofResult.thresholdMet).to.equal(false);
+    expect(proofResult.outcome).to.equal(1);
+  });
+
+  it("rejects proof result submission by a non-authorized signer", async function () {
+    const { registry, other } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
 
     await expect(
       registry.connect(other).submitProofResult(
-        projectSlug,
-        proofHash,
-        true,
-        "passed",
-        "BTC,FLR",
-        "ipfs://proofvault-demo-metadata",
+        1,
+        passProofHash,
+        0,
+        resultMetadataHash,
       ),
-    ).to.be.revertedWith("Only project owner can submit proof");
+    ).to.be.revertedWith("Only authorized worker signer");
+  });
+
+  it("rejects proof result submission for a non-existing request", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await authorizeWorker(registry, worker.address);
+
+    await expect(
+      registry.connect(worker).submitProofResult(99, passProofHash, 0, resultMetadataHash),
+    ).to.be.revertedWith("Proof request does not exist");
+  });
+
+  it("rejects a zero proof hash", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+
+    await expect(
+      registry.connect(worker).submitProofResult(1, ethers.ZeroHash, 0, resultMetadataHash),
+    ).to.be.revertedWith("Proof hash required");
+  });
+
+  it("rejects a zero result metadata hash", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+
+    await expect(
+      registry.connect(worker).submitProofResult(1, passProofHash, 0, ethers.ZeroHash),
+    ).to.be.revertedWith("Result metadata hash required");
+  });
+
+  it("rejects duplicate proof results for the same request", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await registry.connect(worker).submitProofResult(1, passProofHash, 0, resultMetadataHash);
+
+    await expect(
+      registry.connect(worker).submitProofResult(1, failProofHash, 1, resultMetadataHash),
+    ).to.be.revertedWith("Proof result already submitted");
   });
 
   it("reads a project by slug", async function () {
@@ -325,44 +439,50 @@ describe("ProofVaultRegistry", function () {
     expect(project.exists).to.equal(true);
   });
 
-  it("reads a proof result", async function () {
-    const { registry, owner } = await deployRegistry();
-    const proofHash = ethers.keccak256(ethers.toUtf8Bytes("proofvault-proof-result"));
+  it("reads a stored proof result by result ID", async function () {
+    const { registry, worker } = await deployRegistry();
 
-    await registerDefaultProject(registry);
-    await registry.submitProofResult(
-      projectSlug,
-      proofHash,
-      true,
-      "passed",
-      "BTC,FLR",
-      "ipfs://proofvault-demo-metadata",
-    );
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await registry.connect(worker).submitProofResult(1, passProofHash, 0, resultMetadataHash);
 
     const proofResult = await registry.getProofResult(1);
-
     expect(proofResult.id).to.equal(1);
+    expect(proofResult.requestId).to.equal(1);
     expect(proofResult.projectId).to.equal(ethers.keccak256(ethers.toUtf8Bytes(projectSlug)));
-    expect(proofResult.proofHash).to.equal(proofHash);
+    expect(proofResult.proofHash).to.equal(passProofHash);
+    expect(proofResult.outcome).to.equal(0);
     expect(proofResult.thresholdMet).to.equal(true);
-    expect(proofResult.status).to.equal("passed");
-    expect(proofResult.supportedAssets).to.equal("BTC,FLR");
-    expect(proofResult.metadataUri).to.equal("ipfs://proofvault-demo-metadata");
-    expect(proofResult.submittedBy).to.equal(owner.address);
-    expect(proofResult.timestamp).to.be.greaterThan(0);
+    expect(proofResult.resultMetadataHash).to.equal(resultMetadataHash);
+    expect(proofResult.submittedBy).to.equal(worker.address);
+    expect(proofResult.submittedAt).to.be.greaterThan(0);
+    expect(proofResult.exists).to.equal(true);
   });
 
-  it("reads project proof IDs", async function () {
-    const { registry } = await deployRegistry();
-    const firstProofHash = ethers.keccak256(ethers.toUtf8Bytes("proofvault-proof-result-1"));
-    const secondProofHash = ethers.keccak256(ethers.toUtf8Bytes("proofvault-proof-result-2"));
+  it("reads a stored proof result by request ID", async function () {
+    const { registry, worker } = await deployRegistry();
 
-    await registerDefaultProject(registry);
-    await registry.submitProofResult(projectSlug, firstProofHash, true, "passed", "BTC,FLR", "");
-    await registry.submitProofResult(projectSlug, secondProofHash, false, "failed", "BTC,FLR", "");
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await registry.connect(worker).submitProofResult(1, passProofHash, 0, resultMetadataHash);
 
-    const proofIds = await registry.getProjectProofIds(projectSlug);
+    const proofResult = await registry.getProofResultByRequestId(1);
 
-    expect(proofIds).to.deep.equal([1n, 2n]);
+    expect(proofResult.id).to.equal(1);
+    expect(proofResult.requestId).to.equal(1);
+    expect(proofResult.proofHash).to.equal(passProofHash);
+  });
+
+  it("increases proof result count after submission", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+
+    expect(await registry.getProofResultCount()).to.equal(0);
+
+    await registry.connect(worker).submitProofResult(1, passProofHash, 0, resultMetadataHash);
+
+    expect(await registry.getProofResultCount()).to.equal(1);
   });
 });

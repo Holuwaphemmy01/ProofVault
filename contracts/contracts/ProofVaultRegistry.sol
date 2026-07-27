@@ -2,11 +2,18 @@
 pragma solidity ^0.8.25;
 
 contract ProofVaultRegistry {
+    address public contractOwner;
+
     enum ProofRequestStatus {
         Created,
         Verifying,
         Completed,
         Cancelled
+    }
+
+    enum ProofOutcome {
+        PASS,
+        FAIL
     }
 
     struct Project {
@@ -22,14 +29,15 @@ contract ProofVaultRegistry {
 
     struct ProofResult {
         uint256 id;
+        uint256 requestId;
         bytes32 projectId;
         bytes32 proofHash;
+        ProofOutcome outcome;
         bool thresholdMet;
-        string status;
-        string supportedAssets;
-        string metadataUri;
+        bytes32 resultMetadataHash;
         address submittedBy;
-        uint256 timestamp;
+        uint256 submittedAt;
+        bool exists;
     }
 
     struct ProofRequest {
@@ -45,15 +53,16 @@ contract ProofVaultRegistry {
         bool exists;
     }
 
-    uint256 private proofCount;
     uint256 private proofRequestCounter;
+    uint256 private proofResultCounter;
 
     mapping(bytes32 => Project) private projects;
     mapping(string => bytes32) private projectIdsBySlug;
-    mapping(uint256 => ProofResult) private proofResults;
-    mapping(bytes32 => uint256[]) private projectProofIds;
     mapping(uint256 => ProofRequest) private proofRequests;
     mapping(bytes32 => uint256[]) private projectProofRequestIds;
+    mapping(address => bool) private authorizedWorkerSigners;
+    mapping(uint256 => ProofResult) private proofResults;
+    mapping(uint256 => uint256) private proofRequestToResultId;
 
     event ProjectRegistered(
         bytes32 indexed projectId,
@@ -66,12 +75,15 @@ contract ProofVaultRegistry {
     );
 
     event ProofResultSubmitted(
-        uint256 indexed proofId,
+        uint256 indexed resultId,
+        uint256 indexed requestId,
         bytes32 indexed projectId,
-        bytes32 indexed proofHash,
+        bytes32 proofHash,
+        ProofOutcome outcome,
         bool thresholdMet,
-        string status,
-        uint256 timestamp
+        bytes32 resultMetadataHash,
+        address submittedBy,
+        uint256 submittedAt
     );
 
     event ProofRequestCreated(
@@ -84,6 +96,38 @@ contract ProofVaultRegistry {
         address indexed createdBy,
         uint256 createdAt
     );
+
+    event WorkerSignerUpdated(
+        address indexed signer,
+        bool authorized,
+        uint256 updatedAt
+    );
+
+    modifier onlyContractOwner() {
+        require(msg.sender == contractOwner, "Only contract owner");
+        _;
+    }
+
+    modifier onlyAuthorizedWorkerSigner() {
+        require(authorizedWorkerSigners[msg.sender], "Only authorized worker signer");
+        _;
+    }
+
+    constructor() {
+        contractOwner = msg.sender;
+    }
+
+    function setWorkerSigner(address signer, bool authorized) external onlyContractOwner {
+        require(signer != address(0), "Worker signer required");
+
+        authorizedWorkerSigners[signer] = authorized;
+
+        emit WorkerSignerUpdated(signer, authorized, block.timestamp);
+    }
+
+    function isAuthorizedWorkerSigner(address signer) external view returns (bool) {
+        return authorizedWorkerSigners[signer];
+    }
 
     function registerProject(
         string calldata name,
@@ -112,47 +156,6 @@ contract ProofVaultRegistry {
         projectIdsBySlug[slug] = projectId;
 
         emit ProjectRegistered(projectId, name, slug, websiteHash, metadataHash, msg.sender, block.timestamp);
-    }
-
-    function submitProofResult(
-        string calldata slug,
-        bytes32 proofHash,
-        bool thresholdMet,
-        string calldata status,
-        string calldata supportedAssets,
-        string calldata metadataUri
-    ) external returns (uint256 proofId) {
-        bytes32 projectId = projectIdsBySlug[slug];
-        Project storage project = projects[projectId];
-
-        require(project.exists, "Project does not exist");
-        require(project.owner == msg.sender, "Only project owner can submit proof");
-        require(proofHash != bytes32(0), "Proof hash required");
-        require(bytes(status).length > 0, "Status required");
-
-        proofId = ++proofCount;
-
-        proofResults[proofId] = ProofResult({
-            id: proofId,
-            projectId: projectId,
-            proofHash: proofHash,
-            thresholdMet: thresholdMet,
-            status: status,
-            supportedAssets: supportedAssets,
-            metadataUri: metadataUri,
-            submittedBy: msg.sender,
-            timestamp: block.timestamp
-        });
-        projectProofIds[projectId].push(proofId);
-
-        emit ProofResultSubmitted(
-            proofId,
-            projectId,
-            proofHash,
-            thresholdMet,
-            status,
-            block.timestamp
-        );
     }
 
     function createProofRequest(
@@ -203,6 +206,51 @@ contract ProofVaultRegistry {
         );
     }
 
+    function submitProofResult(
+        uint256 requestId,
+        bytes32 proofHash,
+        ProofOutcome outcome,
+        bytes32 resultMetadataHash
+    ) external onlyAuthorizedWorkerSigner returns (uint256 resultId) {
+        ProofRequest storage proofRequest = proofRequests[requestId];
+
+        require(proofRequest.exists, "Proof request does not exist");
+        require(proofHash != bytes32(0), "Proof hash required");
+        require(resultMetadataHash != bytes32(0), "Result metadata hash required");
+        require(proofRequestToResultId[requestId] == 0, "Proof result already submitted");
+        require(proofRequest.status != ProofRequestStatus.Cancelled, "Proof request cancelled");
+
+        bool thresholdMet = outcome == ProofOutcome.PASS;
+        resultId = ++proofResultCounter;
+
+        proofResults[resultId] = ProofResult({
+            id: resultId,
+            requestId: requestId,
+            projectId: proofRequest.projectId,
+            proofHash: proofHash,
+            outcome: outcome,
+            thresholdMet: thresholdMet,
+            resultMetadataHash: resultMetadataHash,
+            submittedBy: msg.sender,
+            submittedAt: block.timestamp,
+            exists: true
+        });
+        proofRequestToResultId[requestId] = resultId;
+        proofRequest.status = ProofRequestStatus.Completed;
+
+        emit ProofResultSubmitted(
+            resultId,
+            requestId,
+            proofRequest.projectId,
+            proofHash,
+            outcome,
+            thresholdMet,
+            resultMetadataHash,
+            msg.sender,
+            block.timestamp
+        );
+    }
+
     function getProjectBySlug(string calldata slug) external view returns (Project memory) {
         bytes32 projectId = projectIdsBySlug[slug];
         require(projects[projectId].exists, "Project does not exist");
@@ -210,19 +258,19 @@ contract ProofVaultRegistry {
     }
 
     function getProofResult(uint256 proofId) external view returns (ProofResult memory) {
-        require(proofId > 0 && proofId <= proofCount, "Proof result does not exist");
+        require(proofResults[proofId].exists, "Proof result does not exist");
         return proofResults[proofId];
+    }
+
+    function getProofResultByRequestId(uint256 requestId) external view returns (ProofResult memory) {
+        uint256 resultId = proofRequestToResultId[requestId];
+        require(resultId != 0, "Proof result does not exist");
+        return proofResults[resultId];
     }
 
     function getProofRequest(uint256 requestId) external view returns (ProofRequest memory) {
         require(proofRequests[requestId].exists, "Proof request does not exist");
         return proofRequests[requestId];
-    }
-
-    function getProjectProofIds(string calldata slug) external view returns (uint256[] memory) {
-        bytes32 projectId = projectIdsBySlug[slug];
-        require(projects[projectId].exists, "Project does not exist");
-        return projectProofIds[projectId];
     }
 
     function getProjectProofRequestIds(string calldata slug) external view returns (uint256[] memory) {
@@ -235,12 +283,12 @@ contract ProofVaultRegistry {
         return projects[projectIdsBySlug[slug]].exists;
     }
 
-    function getProofCount() external view returns (uint256) {
-        return proofCount;
-    }
-
     function getProofRequestCount() external view returns (uint256) {
         return proofRequestCounter;
+    }
+
+    function getProofResultCount() external view returns (uint256) {
+        return proofResultCounter;
     }
 
     function _projectIdFromSlug(string calldata slug) private pure returns (bytes32) {
