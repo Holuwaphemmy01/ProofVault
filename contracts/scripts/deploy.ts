@@ -1,12 +1,12 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const ProofRegistry = await ethers.getContractFactory("ProofRegistry");
-  const proofRegistry = await ProofRegistry.deploy();
+  const ProofVaultRegistry = await ethers.getContractFactory("ProofVaultRegistry");
+  const proofVaultRegistry = await ProofVaultRegistry.deploy();
 
-  await proofRegistry.waitForDeployment();
+  await proofVaultRegistry.waitForDeployment();
 
-  console.log(`ProofRegistry deployed to ${await proofRegistry.getAddress()}`);
+  console.log(`ProofVaultRegistry deployed to ${await proofVaultRegistry.getAddress()}`);
 }
 
 main().catch((error) => {
