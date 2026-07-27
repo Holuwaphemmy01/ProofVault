@@ -98,6 +98,7 @@ pnpm dev:worker
 - [User Journey](./docs/user-journey.md)
 - [Product Requirements](./docs/product-requirements.md)
 - [Architecture](./docs/architecture.md)
+- [Privacy Boundary](./docs/privacy-boundary.md)
 - [Demo Script](./docs/demo-script.md)
 
 ## Project Status
