@@ -5,9 +5,12 @@ contract ProofVaultRegistry {
     struct Project {
         string name;
         string slug;
+        bytes32 websiteHash;
+        bytes32 metadataHash;
         address owner;
         bool exists;
         uint256 createdAt;
+        uint256 updatedAt;
     }
 
     struct ProofResult {
@@ -33,6 +36,8 @@ contract ProofVaultRegistry {
         bytes32 indexed projectId,
         string name,
         string slug,
+        bytes32 websiteHash,
+        bytes32 metadataHash,
         address indexed owner,
         uint256 createdAt
     );
@@ -48,10 +53,14 @@ contract ProofVaultRegistry {
 
     function registerProject(
         string calldata name,
-        string calldata slug
+        string calldata slug,
+        bytes32 websiteHash,
+        bytes32 metadataHash
     ) external returns (bytes32 projectId) {
         require(bytes(name).length > 0, "Project name required");
         require(bytes(slug).length > 0, "Project slug required");
+        require(websiteHash != bytes32(0), "Website hash required");
+        require(metadataHash != bytes32(0), "Metadata hash required");
 
         projectId = _projectIdFromSlug(slug);
         require(!projects[projectId].exists, "Project already exists");
@@ -59,13 +68,16 @@ contract ProofVaultRegistry {
         projects[projectId] = Project({
             name: name,
             slug: slug,
+            websiteHash: websiteHash,
+            metadataHash: metadataHash,
             owner: msg.sender,
             exists: true,
-            createdAt: block.timestamp
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
         });
         projectIdsBySlug[slug] = projectId;
 
-        emit ProjectRegistered(projectId, name, slug, msg.sender, block.timestamp);
+        emit ProjectRegistered(projectId, name, slug, websiteHash, metadataHash, msg.sender, block.timestamp);
     }
 
     function submitProofResult(
