@@ -1,133 +1,166 @@
-# ProofVault Privacy Boundary
+# Privacy Boundary
 
-ProofVault separates public proof data from private treasury data. The goal is to let crypto organizations prove reserve health without exposing wallet strategy, exact private reserve composition, or raw confidential verification output.
+## Overview
 
-## Boundary Summary
+ProofVault turns private reserve data into a public proof result. Crypto organizations can prove reserve health without publicly exposing sensitive treasury data, including wallet strategy, exact private reserve composition, full wallet addresses, exact wallet balances, treasury movement, or internal reserve calculations.
 
-| Boundary | Stored where | Visible to public | Purpose |
-| --- | --- | --- | --- |
-| Public proof data | Frontend, API, ProofRegistry smart contract | Yes | Lets anyone verify reserve status. |
-| Private encrypted inputs | Backend API storage before worker processing | No | Preserves sensitive reserve source data. |
-| Worker-only computation data | Confidential verification worker runtime | No | Calculates reserve health without publishing raw inputs or traces. |
-| Internal operational metadata | Backend API storage | No | Tracks requests, validation state, and worker job state. |
+The privacy boundary defines which data can appear publicly, which data must remain private, which data should be encrypted, which data exists only inside the worker, and which data may be written on-chain.
 
-## Public Data
+## Privacy Principle
 
-Public data is safe to show on the public verification page and, when needed, write to the ProofRegistry smart contract.
+If the data can reveal where the money is, how much is in each wallet, or how the treasury is managed, it must not be public.
 
-| Data | Location | Privacy rule |
-| --- | --- | --- |
-| Project name | Frontend, API | Public display is allowed. |
-| Project type | Frontend, API | Public category is allowed. |
-| Reserve status | Frontend, API, smart contract | Public result only: passed, failed, or pending. |
-| Threshold result | Frontend, API | Show whether the threshold was met, not the exact hidden composition. |
-| Supported assets | Frontend, API, optional on-chain metadata | Public asset coverage is allowed. |
-| Proof hash | Frontend, API, smart contract | Public commitment to the verification result. |
-| Timestamp | Frontend, API, smart contract | Public verification time. |
-| On-chain proof reference | Frontend, API | Public contract proof ID, transaction hash, or explorer link. |
-| Verification mode | Frontend, API | Public mode label, such as simulated confidential verification. |
+## Data Categories
 
-Public data must not reveal wallet strategy or exact private reserve composition.
+### Public Data
 
-## Encrypted Private Data
+Public data can appear on the public verification page and in public proof summaries.
 
-Private reserve inputs should be encrypted before storage or transit wherever possible. In the hackathon MVP, this boundary is documented and simulated; in the full version, encryption and confidential compute enforcement should be implemented.
-
-| Data | Location | Privacy rule |
-| --- | --- | --- |
-| Full wallet addresses | Encrypted API storage, worker input | Never public and never on-chain. |
-| Exact wallet balances | Encrypted API storage, worker input | Never public and never on-chain. |
-| Exact USD value per wallet | Worker input/output before aggregation | Never public; do not expose per-wallet valuation. |
-| Reserve source labels | API storage | Treat as private if labels reveal strategy. |
-| Internal reserve strategy | API storage or organization input | Never public. |
-
-## Worker-Only Data
-
-Worker-only data exists inside the confidential verification worker while a proof is being processed. It should not be persisted publicly or returned to the frontend.
-
-| Data | Location | Privacy rule |
-| --- | --- | --- |
-| Raw reserve calculations | Worker runtime | Never public. |
-| Raw confidential computation output | Worker runtime | Never public. |
-| Per-wallet valuation results | Worker runtime | Never public. |
-| Treasury movement analysis | Worker runtime | Never public. |
-| Confidential worker traces | Worker runtime logs/traces | Never public; avoid logging sensitive values. |
-| Intermediate threshold calculations | Worker runtime | Return only pass/fail and proof hash. |
-
-The worker should return only the minimum verification result:
-
-- Proof request ID
+- Project name
+- Project slug
+- Project type
 - Reserve status
 - Threshold result
 - Supported assets
 - Proof hash
 - Timestamp
 - Verification mode
+- On-chain proof reference
 
-## Internal API Data
+### Private Data
 
-Internal API data supports workflow coordination. It can be stored by `services/api`, but it should not be shown to public verifiers.
+Private data must not be shown on the public verification page or written to the smart contract.
 
-| Data | Location | Privacy rule |
-| --- | --- | --- |
-| Project ID | Backend API | Internal relationship key. |
-| Proof request ID | Backend API, optional on-chain | Public only if it does not reveal sensitive context. |
-| Wallet address hash | Backend API | Internal matching key; do not treat as a substitute for full privacy. |
-| Masked wallet address | Backend API | Internal/admin display only unless explicitly approved for public use. |
-| Validation status | Backend API | Internal workflow status. |
-| Worker job status | Backend API | Internal operational status. |
+- Full wallet addresses
+- Exact asset balances
+- Exact reserve value per wallet
+- Treasury movement
+- Internal reserve strategy
+- Wallet grouping logic
+- Private calculation details
+- Worker computation trace
 
-## Public On-Chain Data
+### Encrypted Data
 
-The ProofRegistry smart contract should store only the minimum public proof result.
+Encrypted data is sensitive input or evidence that should be protected before storage or processing. In the hackathon MVP, encryption may be simulated or documented; in the full version, this boundary should be enforced.
 
-| Data | On-chain? | Privacy rule |
-| --- | --- | --- |
-| Project identifier | Yes | Use a public slug, ID, or metadata reference. |
-| Proof request ID | Yes | Allowed when it is non-sensitive. |
-| Proof hash | Yes | Public commitment to the result. |
-| Status | Yes | Public reserve status only. |
-| Timestamp | Yes | Public proof time. |
-| Supported assets or metadata URI | Optional | Must not resolve to private wallet or balance data. |
+- Wallet addresses
+- Raw reserve source data
+- Signed ownership proofs
+- Balance evidence
+- Verification job payload
+- Worker input bundle
+- Private reserve metadata
+
+### Worker-Only Data
+
+Worker-only data exists inside the confidential verification worker during proof processing. It should not be returned to the frontend, written on-chain, or included in public API responses.
+
+- Raw balances
+- Asset-by-asset valuation
+- Wallet-by-wallet reserve value
+- Full reserve composition
+- Threshold calculation steps
+- Internal verification logic
+- Computation trace
+- Temporary verification evidence
+
+### On-Chain Data
+
+On-chain data is public and permanent, so the ProofRegistry smart contract should store only the minimum public proof result.
+
+- Project slug or project ID
+- Proof request ID
+- Proof hash
+- Status
+- Threshold met true or false
+- Timestamp
+- Metadata URI
+
+On-chain data must not include:
+
+- Full wallet addresses
+- Exact balances
+- Exact USD value per wallet
+- Private reserve composition
+- Treasury strategy
+- Raw worker output
+
+## Privacy Boundary Table
+
+| Data | Public Page | Backend API | Worker | On-Chain | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Project name | Yes | Yes | Optional | Optional | Safe public identifier. |
+| Project slug | Yes | Yes | Optional | Yes | Public routing and proof identifier. |
+| Project type | Yes | Yes | Optional | Optional | Safe category such as exchange, DAO, or bridge. |
+| Required threshold | Result only | Yes | Yes | Optional | Public page should show threshold result, not private reserve composition. |
+| Supported assets | Yes | Yes | Yes | Optional | Asset list is public; balances are private. |
+| Full wallet address | No | Encrypted only | Yes | No | Must never be public. |
+| Masked wallet address | No | Internal only | Optional | No | May support private admin review; avoid public display. |
+| Wallet address hash | No | Internal only | Optional | No | Internal matching field; not a public privacy guarantee. |
+| Exact wallet balance | No | Encrypted only | Yes | No | Must never be public. |
+| Asset USD value per wallet | No | Private only | Yes | No | Must never reveal per-wallet valuation. |
+| Total reserve value | No | Private/Internal | Yes | No | Public result should show only whether threshold was met. |
+| Threshold met | Yes | Yes | Yes | Yes | Safe public boolean/result. |
+| Proof hash | Yes | Yes | Yes | Yes | Public commitment to the verification result. |
+| Transaction hash | Yes | Yes | No | Yes | Public on-chain reference after submission. |
+| Timestamp | Yes | Yes | Yes | Yes | Safe public proof time. |
+| Internal computation trace | No | No | Yes | No | Worker-only; never expose logs or traces publicly. |
+| Treasury strategy | No | Private only | Optional | No | Must never be public. |
+
+## Public Verification Page Rules
+
+The public verification page may show only:
+
+- Project name
+- Reserve status
+- Threshold result
+- Supported assets
+- Proof hash
+- Timestamp
+- Verification mode
+- On-chain proof reference
+
+It must not show wallet-level data, raw reserve calculations, exact reserve composition, or treasury strategy.
 
 ## What Must Never Be Public
 
 - Full wallet addresses
-- Exact wallet balances
-- Exact USD value per wallet
-- Raw reserve calculations
+- Exact balances
+- Exact value per wallet
+- How funds are distributed
+- Which wallet is cold storage
+- Which wallet is hot wallet
 - Treasury movement
-- Internal reserve strategy
-- Raw confidential computation output
-- Confidential worker traces
-- Exact private reserve composition
+- Internal worker logs
+- Raw reserve calculations
 
-## MVP Boundary
+## MVP Privacy Approach
 
 For the hackathon MVP:
 
-- Confidential compute is simulated by `services/worker`.
-- FDC/external data validation is mocked or documented as future integration.
-- FTSO/price feeds are mocked with static values.
-- Private reserve inputs should not be displayed in public UI.
-- ProofRegistry stores only the public proof result.
+- The worker may simulate confidential verification.
+- Sensitive values should still be treated as private in the UI and docs.
+- The public result should only show safe proof data.
+- Mock data must still follow the privacy boundary.
 
-## Full-Version Boundary
+## Full Version Privacy Approach
 
-For the post-hackathon version:
+For the full version:
 
-- Private reserve inputs should be encrypted before storage and processing.
-- The worker should evolve into a confidential compute or TEE-style verifier.
-- FDC should validate external blockchain reserve evidence.
-- FTSO should provide live asset price feeds for valuation.
-- Public verification should continue to expose only the minimum proof result.
+- Reserve inputs should be encrypted before processing.
+- Confidential compute / TEE-style verification can process sensitive data.
+- Only signed final proof results should be published.
+- The smart contract should store minimal public proof data.
 
-## Acceptance Criteria
+## Acceptance Checklist
 
-- [ ] Public data does not expose wallet strategy.
-- [ ] Public data does not expose exact private reserve composition.
-- [ ] Full wallet addresses are never public.
-- [ ] Exact wallet balances are never public.
-- [ ] Raw worker output is never public.
-- [ ] On-chain data contains only the minimum public proof result.
-- [ ] Worker returns only pass/fail status, threshold result, proof hash, timestamp, supported assets, and verification mode.
+- [ ] Public data is clearly defined
+- [ ] Private data is clearly defined
+- [ ] Encrypted data is clearly defined
+- [ ] Worker-only data is clearly defined
+- [ ] On-chain data is clearly defined
+- [ ] Public verification page rules are documented
+- [ ] Sensitive wallet strategy is not exposed
+- [ ] Exact private reserve composition is not exposed
+- [ ] MVP and full-version privacy approaches are documented

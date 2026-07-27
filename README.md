@@ -92,6 +92,10 @@ pnpm dev:worker
 4. Generate a proof hash and timestamp.
 5. Publish or view the public reserve status.
 
+## Privacy Boundary
+
+ProofVault separates private reserve inputs from public proof results. Public outputs must not expose wallet strategy, exact private reserve composition, full wallet addresses, exact balances, treasury movement, or internal reserve calculations. See [Privacy Boundary](./docs/privacy-boundary.md).
+
 ## Documentation Links
 
 - [Demo Acceptance Criteria](./docs/demo-acceptance-criteria.md)
