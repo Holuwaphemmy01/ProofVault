@@ -71,6 +71,8 @@ contract ProofVaultRegistry {
     mapping(address => bool) private authorizedWorkerSigners;
     mapping(uint256 => ProofResult) private proofResults;
     mapping(uint256 => uint256) private proofRequestToResultId;
+    mapping(bytes32 => uint256[]) private projectProofResultIds;
+    mapping(bytes32 => uint256) private latestProofResultIdByProject;
 
     event ProjectRegistered(
         bytes32 indexed projectId,
@@ -299,6 +301,8 @@ contract ProofVaultRegistry {
             exists: true
         });
         proofRequestToResultId[requestId] = resultId;
+        projectProofResultIds[proofRequest.projectId].push(resultId);
+        latestProofResultIdByProject[proofRequest.projectId] = resultId;
         proofRequest.status = ProofRequestStatus.Completed;
 
         emit ProofResultSubmitted(
@@ -331,6 +335,18 @@ contract ProofVaultRegistry {
         return proofResults[resultId];
     }
 
+    function getLatestProofResultBySlug(
+        string calldata slug
+    ) external view returns (ProofResult memory) {
+        bytes32 projectId = _projectIdFromSlug(slug);
+        require(projects[projectId].exists, "Project does not exist");
+
+        uint256 latestResultId = latestProofResultIdByProject[projectId];
+        require(latestResultId != 0, "Proof result does not exist");
+
+        return proofResults[latestResultId];
+    }
+
     function getProofRequest(uint256 requestId) external view returns (ProofRequest memory) {
         require(proofRequests[requestId].exists, "Proof request does not exist");
         return proofRequests[requestId];
@@ -340,6 +356,28 @@ contract ProofVaultRegistry {
         bytes32 projectId = _projectIdFromSlug(slug);
         require(projects[projectId].exists, "Project does not exist");
         return projectProofRequestIds[projectId];
+    }
+
+    function getProjectProofResultIds(string calldata slug) external view returns (uint256[] memory) {
+        bytes32 projectId = _projectIdFromSlug(slug);
+        require(projects[projectId].exists, "Project does not exist");
+        return projectProofResultIds[projectId];
+    }
+
+    function getProjectProofResultCount(string calldata slug) external view returns (uint256) {
+        bytes32 projectId = _projectIdFromSlug(slug);
+        require(projects[projectId].exists, "Project does not exist");
+        return projectProofResultIds[projectId].length;
+    }
+
+    function getProjectProofResultIdAt(
+        string calldata slug,
+        uint256 index
+    ) external view returns (uint256) {
+        bytes32 projectId = _projectIdFromSlug(slug);
+        require(projects[projectId].exists, "Project does not exist");
+        require(index < projectProofResultIds[projectId].length, "Proof result index out of bounds");
+        return projectProofResultIds[projectId][index];
     }
 
     function projectExists(string calldata slug) external view returns (bool) {

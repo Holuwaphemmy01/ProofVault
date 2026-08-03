@@ -78,6 +78,25 @@ describe("ProofVaultRegistry", function () {
     return signer.signMessage(ethers.getBytes(messageHash));
   }
 
+  async function submitSignedProofResult(
+    registry: Awaited<ReturnType<typeof deployRegistry>>["registry"],
+    signer: any,
+    requestId: number,
+    proofHash: string,
+    outcome: number,
+  ) {
+    const signature = await signProofResult(registry, signer, requestId, proofHash, outcome);
+
+    return registry.submitProofResult(
+      requestId,
+      proofHash,
+      outcome,
+      resultMetadataHash,
+      workerSignedAt,
+      signature,
+    );
+  }
+
   it("sets contract owner to the deployer", async function () {
     const { registry, owner } = await deployRegistry();
 
@@ -617,5 +636,145 @@ describe("ProofVaultRegistry", function () {
     await registry.submitProofResult(1, passProofHash, 0, resultMetadataHash, workerSignedAt, signature);
 
     expect(await registry.getProofResultCount()).to.equal(1);
+  });
+
+  it("fetches the latest proof result by project slug", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+
+    const latestProofResult = await registry.getLatestProofResultBySlug(projectSlug);
+
+    expect(latestProofResult.id).to.equal(1);
+    expect(latestProofResult.requestId).to.equal(1);
+    expect(latestProofResult.proofHash).to.equal(passProofHash);
+  });
+
+  it("stores project proof result IDs", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+
+    const resultIds = await registry.getProjectProofResultIds(projectSlug);
+
+    expect(resultIds).to.deep.equal([1n]);
+  });
+
+  it("stores multiple proof results for the same project historically", async function () {
+    const { registry, worker } = await deployRegistry();
+    const secondProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-2"));
+    const thirdProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-3"));
+
+    await registerDefaultProject(registry);
+    await authorizeWorker(registry, worker.address);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 2, secondProofHash, 1);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 3, thirdProofHash, 0);
+
+    const resultIds = await registry.getProjectProofResultIds(projectSlug);
+
+    expect(resultIds).to.deep.equal([1n, 2n, 3n]);
+  });
+
+  it("updates the latest proof result after a newer proof result is submitted", async function () {
+    const { registry, worker } = await deployRegistry();
+    const secondProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-2"));
+    const thirdProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-3"));
+
+    await registerDefaultProject(registry);
+    await authorizeWorker(registry, worker.address);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 2, secondProofHash, 1);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 3, thirdProofHash, 0);
+
+    const latestProofResult = await registry.getLatestProofResultBySlug(projectSlug);
+
+    expect(latestProofResult.id).to.equal(3);
+    expect(latestProofResult.requestId).to.equal(3);
+    expect(latestProofResult.proofHash).to.equal(thirdProofHash);
+  });
+
+  it("increases project proof result count after each proof result", async function () {
+    const { registry, worker } = await deployRegistry();
+    const secondProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-2"));
+
+    await registerDefaultProject(registry);
+    await authorizeWorker(registry, worker.address);
+    expect(await registry.getProjectProofResultCount(projectSlug)).to.equal(0);
+
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+    expect(await registry.getProjectProofResultCount(projectSlug)).to.equal(1);
+
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 2, secondProofHash, 1);
+    expect(await registry.getProjectProofResultCount(projectSlug)).to.equal(2);
+  });
+
+  it("gets a project proof result ID at a specific index", async function () {
+    const { registry, worker } = await deployRegistry();
+    const secondProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-2"));
+    const thirdProofHash = ethers.keccak256(ethers.toUtf8Bytes("atlasx-proof-result-3"));
+
+    await registerDefaultProject(registry);
+    await authorizeWorker(registry, worker.address);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 2, secondProofHash, 1);
+    await createDefaultProofRequest(registry);
+    await submitSignedProofResult(registry, worker, 3, thirdProofHash, 0);
+
+    expect(await registry.getProjectProofResultIdAt(projectSlug, 0)).to.equal(1);
+    expect(await registry.getProjectProofResultIdAt(projectSlug, 1)).to.equal(2);
+    expect(await registry.getProjectProofResultIdAt(projectSlug, 2)).to.equal(3);
+  });
+
+  it("rejects latest proof result lookup for a non-existing project", async function () {
+    const { registry } = await deployRegistry();
+
+    await expect(
+      registry.getLatestProofResultBySlug("missing-project"),
+    ).to.be.revertedWith("Project does not exist");
+  });
+
+  it("rejects latest proof result lookup when a project has no proof result", async function () {
+    const { registry } = await deployRegistry();
+
+    await registerDefaultProject(registry);
+
+    await expect(
+      registry.getLatestProofResultBySlug(projectSlug),
+    ).to.be.revertedWith("Proof result does not exist");
+  });
+
+  it("rejects project proof result IDs lookup for a non-existing project", async function () {
+    const { registry } = await deployRegistry();
+
+    await expect(
+      registry.getProjectProofResultIds("missing-project"),
+    ).to.be.revertedWith("Project does not exist");
+  });
+
+  it("rejects project proof result ID lookup for an invalid index", async function () {
+    const { registry, worker } = await deployRegistry();
+
+    await registerProjectAndCreateRequest(registry);
+    await authorizeWorker(registry, worker.address);
+    await submitSignedProofResult(registry, worker, 1, passProofHash, 0);
+
+    await expect(
+      registry.getProjectProofResultIdAt(projectSlug, 1),
+    ).to.be.revertedWith("Proof result index out of bounds");
   });
 });
