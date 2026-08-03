@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
 contract ProofVaultRegistry {
+    using ECDSA for bytes32;
+    using MessageHashUtils for bytes32;
+
     address public contractOwner;
 
     enum ProofRequestStatus {
@@ -36,6 +42,8 @@ contract ProofVaultRegistry {
         bool thresholdMet;
         bytes32 resultMetadataHash;
         address submittedBy;
+        address relayedBy;
+        uint256 workerSignedAt;
         uint256 submittedAt;
         bool exists;
     }
@@ -206,19 +214,72 @@ contract ProofVaultRegistry {
         );
     }
 
+    function getProofResultMessageHash(
+        uint256 requestId,
+        bytes32 proofHash,
+        ProofOutcome outcome,
+        uint256 workerSignedAt,
+        bytes32 resultMetadataHash
+    ) public view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                address(this),
+                block.chainid,
+                requestId,
+                proofHash,
+                outcome,
+                workerSignedAt,
+                resultMetadataHash
+            )
+        );
+    }
+
+    function recoverProofResultSigner(
+        uint256 requestId,
+        bytes32 proofHash,
+        ProofOutcome outcome,
+        uint256 workerSignedAt,
+        bytes32 resultMetadataHash,
+        bytes calldata signature
+    ) public view returns (address) {
+        bytes32 messageHash = getProofResultMessageHash(
+            requestId,
+            proofHash,
+            outcome,
+            workerSignedAt,
+            resultMetadataHash
+        );
+
+        return messageHash.toEthSignedMessageHash().recover(signature);
+    }
+
     function submitProofResult(
         uint256 requestId,
         bytes32 proofHash,
         ProofOutcome outcome,
-        bytes32 resultMetadataHash
-    ) external onlyAuthorizedWorkerSigner returns (uint256 resultId) {
+        bytes32 resultMetadataHash,
+        uint256 workerSignedAt,
+        bytes calldata signature
+    ) external returns (uint256 resultId) {
         ProofRequest storage proofRequest = proofRequests[requestId];
 
         require(proofRequest.exists, "Proof request does not exist");
         require(proofHash != bytes32(0), "Proof hash required");
         require(resultMetadataHash != bytes32(0), "Result metadata hash required");
+        require(workerSignedAt != 0, "Worker signature timestamp required");
+        require(signature.length > 0, "Signature required");
         require(proofRequestToResultId[requestId] == 0, "Proof result already submitted");
         require(proofRequest.status != ProofRequestStatus.Cancelled, "Proof request cancelled");
+
+        address recoveredSigner = recoverProofResultSigner(
+            requestId,
+            proofHash,
+            outcome,
+            workerSignedAt,
+            resultMetadataHash,
+            signature
+        );
+        require(authorizedWorkerSigners[recoveredSigner], "Unauthorized worker signer");
 
         bool thresholdMet = outcome == ProofOutcome.PASS;
         resultId = ++proofResultCounter;
@@ -231,7 +292,9 @@ contract ProofVaultRegistry {
             outcome: outcome,
             thresholdMet: thresholdMet,
             resultMetadataHash: resultMetadataHash,
-            submittedBy: msg.sender,
+            submittedBy: recoveredSigner,
+            relayedBy: msg.sender,
+            workerSignedAt: workerSignedAt,
             submittedAt: block.timestamp,
             exists: true
         });
@@ -246,7 +309,7 @@ contract ProofVaultRegistry {
             outcome,
             thresholdMet,
             resultMetadataHash,
-            msg.sender,
+            recoveredSigner,
             block.timestamp
         );
     }
