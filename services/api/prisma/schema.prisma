@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectType {
+  exchange
+  dao
+  bridge
+  lending_protocol
+  stablecoin_issuer
+  asset_backed_token
+  other
+}
+
+enum ProofRequestStatus {
+  draft
+  pending
+  verifying
+  completed
+  cancelled
+  failed
+}
+
+enum PrivacyMode {
+  confidential_threshold_proof
+  partial_disclosure
+  public_reserve_snapshot
+}
+
+enum ProofOutcome {
+  PASS
+  FAIL
+  PENDING
+}
+
+model Project {
+  id                String         @id @default(uuid())
+  name              String
+  slug              String         @unique
+  website           String
+  websiteHash       String
+  metadataHash      String
+  projectType       ProjectType
+  description       String?
+  ownerWallet       String
+  maskedOwnerWallet String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  proofRequests     ProofRequest[]
+  proofResults      ProofResult[]
+
+  @@index([slug])
+  @@index([ownerWallet])
+}
+
+model ProofRequest {
+  id                   String             @id @default(uuid())
+  projectId            String
+  projectSlug          String
+  proofName            String
+  requiredThreshold    Decimal            @db.Decimal(20, 2)
+  thresholdCurrency    String             @default("USD")
+  thresholdCommitment  String
+  selectedAssets       String[]
+  selectedAssetsHash   String
+  privacyMode          PrivacyMode
+  metadataHash         String
+  status               ProofRequestStatus @default(draft)
+  onChainRequestId     String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  project              Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assetBalances        AssetBalance[]
+  proofResult          ProofResult?
+
+  @@index([projectId])
+  @@index([projectSlug])
+  @@index([status])
+}
+
+model AssetBalance {
+  id                   String   @id @default(uuid())
+  proofRequestId       String
+  assetSymbol          String
+  chain                String
+  sourceLabel          String?
+  walletAddressHash    String
+  maskedWalletAddress  String?
+  visibilityPreference String   @default("hidden")
+  verificationMethod   String?
+  validationStatus     String   @default("pending")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  proofRequest         ProofRequest @relation(fields: [proofRequestId], references: [id], onDelete: Cascade)
+
+  @@index([proofRequestId])
+  @@index([assetSymbol])
+  @@index([chain])
+}
+
+model ProofResult {
+  id                 String       @id @default(uuid())
+  projectId          String
+  projectSlug        String
+  proofRequestId     String       @unique
+  outcome            ProofOutcome
+  thresholdMet       Boolean
+  proofHash          String
+  resultMetadataHash String
+  transactionHash    String?
+  onChainResultId    String?
+  workerSignedAt     DateTime?
+  submittedAt        DateTime     @default(now())
+  submittedBy        String?
+  relayedBy          String?
+  verifiedWith       String[]
+  publicMessage      String?
+
+  project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proofRequest       ProofRequest @relation(fields: [proofRequestId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectSlug])
+  @@index([outcome])
+  @@index([submittedAt])
+}
+
+model WorkerCallback {
+  id             String   @id @default(uuid())
+  proofRequestId String
+  status         String
+  payloadHash    String
+  receivedAt     DateTime @default(now())
+  processed      Boolean  @default(false)
+  errorMessage   String?
+
+  @@index([proofRequestId])
+  @@index([status])
+}
