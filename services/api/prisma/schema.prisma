@@ -49,6 +49,9 @@ model Project {
   description       String?
   ownerWallet       String
   maskedOwnerWallet String
+  onChainProjectId  String?
+  onChainRegistrationTx String?
+  onChainStatus     String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -73,6 +76,8 @@ model ProofRequest {
   metadataHash         String
   status               ProofRequestStatus @default(draft)
   onChainRequestId     String?
+  onChainTxHash        String?
+  onChainStatus        String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -91,6 +96,9 @@ model AssetBalance {
   assetSymbol          String
   chain                String
   sourceLabel          String?
+  encryptedWalletReference String?
+  encryptedPayloadHash String?
+  encryptionVersion    String?
   walletAddressHash    String
   maskedWalletAddress  String?
   visibilityPreference String   @default("hidden")

@@ -1,12 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { createProjectSchema } from "../schemas/project.schema.js";
-import { createProject, getProjectBySlug } from "../services/project.service.js";
+import { createProject, getProjectProfileBySlug } from "../services/project.service.js";
 
 export async function projectsRoutes(app: FastifyInstance) {
   app.post("/projects", {
     schema: {
       tags: ["Projects"],
-      summary: "Create project metadata",
+      summary: "Create project metadata and attempt on-chain registration",
+      description: "Saves project metadata in PostgreSQL and attempts to register the project in ProofVaultRegistry using the configured backend relayer wallet.",
       body: {
         type: "object",
         required: ["name", "slug", "website", "projectType", "ownerWallet"],
@@ -33,7 +34,7 @@ export async function projectsRoutes(app: FastifyInstance) {
 
     try {
       const project = await createProject(parsed.data);
-      return reply.status(201).send({ success: true, project });
+      return reply.status(201).send({ success: true, ...project });
     } catch (error) {
       if (error instanceof Error && error.message === "Project slug already exists") {
         return reply.status(409).send({ error: error.message });
@@ -47,7 +48,8 @@ export async function projectsRoutes(app: FastifyInstance) {
   app.get<{ Params: { slug: string } }>("/projects/:slug", {
     schema: {
       tags: ["Projects"],
-      summary: "Get project metadata by slug",
+      summary: "Get project profile, on-chain registration status, and latest proof status",
+      description: "Returns the database project profile plus ProofVaultRegistry registration and latest proof status when contract configuration is available.",
       params: {
         type: "object",
         required: ["slug"],
@@ -58,13 +60,13 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const project = await getProjectBySlug(request.params.slug);
+      const profile = await getProjectProfileBySlug(request.params.slug);
 
-      if (!project) {
+      if (!profile) {
         return reply.status(404).send({ error: "Project not found" });
       }
 
-      return { project };
+      return profile;
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Database operation failed" });

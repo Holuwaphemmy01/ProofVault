@@ -11,20 +11,38 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
   app.post("/proof-requests", {
     schema: {
       tags: ["Proof Requests"],
-      summary: "Create proof request metadata",
+      summary: "Create proof request metadata and encrypted wallet references",
+      description: "Stores proof request metadata and encrypted wallet references in PostgreSQL, then attempts to create the public proof request on ProofVaultRegistry through the backend relayer.",
       body: {
         type: "object",
-        required: ["projectSlug", "proofName", "requiredThreshold", "thresholdCurrency", "selectedAssets", "privacyMode"],
+        required: ["projectSlug", "proofName", "requiredThreshold", "selectedAssets", "privacyMode", "walletReferences"],
         properties: {
           projectSlug: { type: "string", example: "atlasx-exchange" },
           proofName: { type: "string", example: "July 2026 Reserve Verification" },
           requiredThreshold: { type: "number", example: 1000000 },
-          thresholdCurrency: { type: "string", example: "USD" },
+          thresholdCurrency: { type: "string", default: "USD", example: "USD" },
           selectedAssets: { type: "array", items: { type: "string" }, example: ["BTC", "FLR"] },
           privacyMode: {
             type: "string",
             enum: ["confidential_threshold_proof", "partial_disclosure", "public_reserve_snapshot"],
             example: "confidential_threshold_proof",
+          },
+          walletReferences: {
+            type: "array",
+            minItems: 1,
+            items: {
+              type: "object",
+              required: ["assetSymbol", "chain", "encryptedWalletReference", "walletAddressHash"],
+              properties: {
+                assetSymbol: { type: "string", example: "BTC" },
+                chain: { type: "string", example: "bitcoin" },
+                sourceLabel: { type: "string", example: "BTC Reserve Source 1" },
+                encryptedWalletReference: { type: "string", example: "0xencryptedbtcwalletreference" },
+                walletAddressHash: { type: "string", example: "0xwalletaddresshashbtc" },
+                maskedWalletAddress: { type: "string", example: "bc1q...k42p" },
+                encryptionVersion: { type: "string", default: "proofvault-v1", example: "proofvault-v1" },
+              },
+            },
           },
         },
       },
@@ -37,12 +55,13 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
     }
 
     try {
-      if (!(await getProjectBySlug(parsed.data.projectSlug))) {
+      const proofRequest = await createProofRequest(parsed.data);
+
+      if (!proofRequest) {
         return reply.status(404).send({ error: "Project not found" });
       }
 
-      const proofRequest = await createProofRequest(parsed.data);
-      return reply.status(201).send({ success: true, proofRequest });
+      return reply.status(201).send({ success: true, ...proofRequest });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Database operation failed" });
@@ -52,7 +71,8 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/proof-requests/:id", {
     schema: {
       tags: ["Proof Requests"],
-      summary: "Get proof request metadata by ID",
+      summary: "Get proof request metadata, hashes, on-chain status, and wallet reference summaries",
+      description: "Returns frontend-safe proof request details. Raw encrypted wallet payloads are stored for internal processing but are not returned by this endpoint.",
       params: {
         type: "object",
         required: ["id"],
@@ -80,6 +100,7 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
     schema: {
       tags: ["Proof Requests"],
       summary: "List proof requests for a project",
+      description: "Returns all proof requests for a project slug, including hash commitments, on-chain request status, and safe wallet reference summaries.",
       params: {
         type: "object",
         required: ["slug"],
