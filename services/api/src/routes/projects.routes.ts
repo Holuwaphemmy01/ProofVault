@@ -66,7 +66,10 @@ export async function projectsRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: "Project not found" });
       }
 
-      return profile;
+      return {
+        success: true,
+        ...profile,
+      };
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Database operation failed" });

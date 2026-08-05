@@ -31,19 +31,8 @@ export async function createProject(input: CreateProjectInput) {
   }));
 
   try {
-    const project = await prisma.project.upsert({
-      where: { slug: input.slug },
-      update: {
-        name: input.name,
-        website: input.website,
-        websiteHash,
-        metadataHash,
-        projectType: input.projectType,
-        description: input.description,
-        ownerWallet: input.ownerWallet,
-        maskedOwnerWallet: maskWallet(input.ownerWallet),
-      },
-      create: {
+    const project = await prisma.project.create({
+      data: {
         name: input.name,
         slug: input.slug,
         website: input.website,
