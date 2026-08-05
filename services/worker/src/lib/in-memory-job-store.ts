@@ -13,7 +13,6 @@ export function createJob(input: ProofJobInput) {
     status: "received",
     createdAt: now,
     updatedAt: now,
-    input,
   };
 
   jobs.set(job.id, job);
@@ -43,6 +42,5 @@ export function getJob(id: string) {
 }
 
 export function toPublicJob(job: StoredWorkerJob): PublicWorkerJob {
-  const { input: _input, ...publicJob } = job;
-  return publicJob;
+  return job;
 }

@@ -1,10 +1,9 @@
 import type { ProofJobInput } from "../schemas/proof-job.schema.js";
 import type { PrivateProofPayload } from "@proofvault/proof-payload";
-import { sha256Hex } from "../lib/hash.js";
 import { createJob, updateJob } from "../lib/in-memory-job-store.js";
 import { sendWorkerCallback } from "./callback.service.js";
-import { runMockConfidentialCompute } from "./mock-confidential-compute.service.js";
 import { decryptProofPayload } from "./payload-decryption.service.js";
+import { calculatePrivateReserve } from "./private-reserve-calculation.service.js";
 import { signProofResult } from "./signature.service.js";
 
 function toPrivatePayload(input: ProofJobInput): PrivateProofPayload {
@@ -37,47 +36,38 @@ export async function processProofJob(input: ProofJobInput) {
       status: "processing",
     });
 
-    const privatePayload = toPrivatePayload(input);
-    const computeResult = runMockConfidentialCompute(privatePayload);
     const workerSignedAt = Math.floor(Date.now() / 1000);
-    const proofHash = sha256Hex(JSON.stringify({
+    const privatePayload = toPrivatePayload(input);
+    const reserveResult = calculatePrivateReserve({
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,
       projectSlug: input.projectSlug,
-      selectedAssets: privatePayload.selectedAssets,
-      thresholdMet: computeResult.thresholdMet,
-      outcome: computeResult.outcome,
       workerSignedAt,
-    }));
-    const resultMetadataHash = sha256Hex(JSON.stringify({
-      status: computeResult.outcome,
-      thresholdMet: computeResult.thresholdMet,
-      verifiedWith: computeResult.verifiedWith,
-      privacyMode: "confidential_threshold_proof",
-    }));
+      privatePayload,
+    });
     const signature = await signProofResult({
       onChainRequestId: input.onChainRequestId,
-      proofHash,
-      outcome: computeResult.outcome,
-      resultMetadataHash,
+      proofHash: reserveResult.proofHash,
+      outcome: reserveResult.outcome,
+      resultMetadataHash: reserveResult.resultMetadataHash,
       workerSignedAt,
     });
     const callback = await sendWorkerCallback({
       proofRequestId: input.proofRequestId,
-      outcome: computeResult.outcome,
-      thresholdMet: computeResult.thresholdMet,
-      proofHash,
+      outcome: reserveResult.outcome,
+      thresholdMet: reserveResult.thresholdMet,
+      proofHash: reserveResult.proofHash,
       workerSignedAt: signature.workerSignedAt,
       signature: signature.signature,
-      verifiedWith: computeResult.verifiedWith,
+      verifiedWith: reserveResult.verifiedWith,
     });
 
     return updateJob(job.id, {
       status: "completed",
-      outcome: computeResult.outcome,
-      thresholdMet: computeResult.thresholdMet,
-      proofHash,
-      resultMetadataHash,
+      outcome: reserveResult.outcome,
+      thresholdMet: reserveResult.thresholdMet,
+      proofHash: reserveResult.proofHash,
+      resultMetadataHash: reserveResult.resultMetadataHash,
       signature: signature.signature,
       signerAddress: signature.signerAddress,
       workerSignedAt: signature.workerSignedAt,

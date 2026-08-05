@@ -1,5 +1,3 @@
-import type { ProofJobInput } from "../schemas/proof-job.schema.js";
-
 export type ProofOutcome = "PASS" | "FAIL";
 export type JobStatus = "received" | "processing" | "completed" | "failed";
 export type CallbackStatus = "skipped" | "sent" | "failed";
@@ -22,6 +20,4 @@ export type PublicWorkerJob = {
   updatedAt: string;
 };
 
-export type StoredWorkerJob = PublicWorkerJob & {
-  input: ProofJobInput;
-};
+export type StoredWorkerJob = PublicWorkerJob;
