@@ -8,11 +8,26 @@ export async function jobsRoutes(app: FastifyInstance) {
     schema: {
       body: {
         type: "object",
-        required: ["proofRequestId", "onChainRequestId", "projectSlug", "requiredThreshold", "selectedAssets", "walletReferences"],
+        required: ["proofRequestId", "onChainRequestId", "projectSlug"],
         properties: {
           proofRequestId: { type: "string", example: "database-proof-request-id" },
           onChainRequestId: { type: "string", example: "1" },
           projectSlug: { type: "string", example: "atlasx-exchange" },
+          encryptedProofPayload: {
+            type: "object",
+            properties: {
+              version: { type: "string", example: "proofvault-encrypted-payload-v1" },
+              algorithm: { type: "string", example: "RSA-OAEP-256+A256GCM" },
+              keyId: { type: "string", example: "proofvault-worker-local-v1" },
+              encryptedKey: { type: "string", example: "base64-encrypted-aes-key" },
+              iv: { type: "string", example: "base64-aes-gcm-iv" },
+              ciphertext: { type: "string", example: "base64-encrypted-json-payload" },
+              authTag: { type: "string", example: "base64-aes-gcm-auth-tag" },
+              aad: { type: "string", example: "atlasx-exchange:proof-request" },
+              payloadHash: { type: "string", example: "0xpayloadhash" },
+              createdAt: { type: "string", example: "2026-08-05T15:19:00.000Z" },
+            },
+          },
           requiredThreshold: { type: "number", example: 1000000 },
           thresholdCurrency: { type: "string", default: "USD", example: "USD" },
           selectedAssets: { type: "array", items: { type: "string" }, example: ["BTC", "FLR"] },

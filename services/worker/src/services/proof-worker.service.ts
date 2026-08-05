@@ -1,9 +1,33 @@
 import type { ProofJobInput } from "../schemas/proof-job.schema.js";
+import type { PrivateProofPayload } from "@proofvault/proof-payload";
 import { sha256Hex } from "../lib/hash.js";
 import { createJob, updateJob } from "../lib/in-memory-job-store.js";
 import { sendWorkerCallback } from "./callback.service.js";
 import { runMockConfidentialCompute } from "./mock-confidential-compute.service.js";
+import { decryptProofPayload } from "./payload-decryption.service.js";
 import { signProofResult } from "./signature.service.js";
+
+function toPrivatePayload(input: ProofJobInput): PrivateProofPayload {
+  if (input.encryptedProofPayload) {
+    return decryptProofPayload(input.encryptedProofPayload);
+  }
+
+  return {
+    projectSlug: input.projectSlug,
+    proofName: "Legacy Mock Proof Job",
+    requiredThreshold: input.requiredThreshold ?? 0,
+    thresholdCurrency: input.thresholdCurrency,
+    selectedAssets: input.selectedAssets ?? [],
+    wallets: (input.walletReferences ?? []).map((reference) => ({
+      assetSymbol: reference.assetSymbol,
+      chain: reference.chain,
+      walletAddress: reference.walletAddressHash,
+      sourceLabel: undefined,
+    })),
+    privateSalt: "legacy-mock-salt",
+    createdAt: new Date().toISOString(),
+  };
+}
 
 export async function processProofJob(input: ProofJobInput) {
   const job = createJob(input);
@@ -13,13 +37,14 @@ export async function processProofJob(input: ProofJobInput) {
       status: "processing",
     });
 
-    const computeResult = runMockConfidentialCompute(input);
+    const privatePayload = toPrivatePayload(input);
+    const computeResult = runMockConfidentialCompute(privatePayload);
     const workerSignedAt = Math.floor(Date.now() / 1000);
     const proofHash = sha256Hex(JSON.stringify({
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,
       projectSlug: input.projectSlug,
-      selectedAssets: input.selectedAssets,
+      selectedAssets: privatePayload.selectedAssets,
       thresholdMet: computeResult.thresholdMet,
       outcome: computeResult.outcome,
       workerSignedAt,

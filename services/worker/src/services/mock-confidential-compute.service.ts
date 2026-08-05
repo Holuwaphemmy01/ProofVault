@@ -1,4 +1,4 @@
-import type { ProofJobInput } from "../schemas/proof-job.schema.js";
+import type { PrivateProofPayload } from "@proofvault/proof-payload";
 import type { ProofOutcome } from "../types/worker.types.js";
 
 const mockUsdValuesByAsset: Record<string, number> = {
@@ -6,8 +6,8 @@ const mockUsdValuesByAsset: Record<string, number> = {
   FLR: 400000,
 };
 
-export function runMockConfidentialCompute(input: ProofJobInput) {
-  const totalMockReserveValue = input.walletReferences.reduce((total, reference) => {
+export function runMockConfidentialCompute(input: PrivateProofPayload) {
+  const totalMockReserveValue = input.wallets.reduce((total, reference) => {
     return total + (mockUsdValuesByAsset[reference.assetSymbol.toUpperCase()] ?? 0);
   }, 0);
   const thresholdMet = totalMockReserveValue >= input.requiredThreshold;

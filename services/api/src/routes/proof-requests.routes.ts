@@ -15,7 +15,7 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
       description: "Stores proof request metadata and encrypted wallet references in PostgreSQL, then attempts to create the public proof request on ProofVaultRegistry through the backend relayer.",
       body: {
         type: "object",
-        required: ["projectSlug", "proofName", "requiredThreshold", "selectedAssets", "privacyMode", "walletReferences"],
+        required: ["projectSlug", "proofName", "selectedAssets", "privacyMode"],
         properties: {
           projectSlug: { type: "string", example: "atlasx-exchange" },
           proofName: { type: "string", example: "July 2026 Reserve Verification" },
@@ -26,6 +26,40 @@ export async function proofRequestsRoutes(app: FastifyInstance) {
             type: "string",
             enum: ["confidential_threshold_proof", "partial_disclosure", "public_reserve_snapshot"],
             example: "confidential_threshold_proof",
+          },
+          encryptedProofPayload: {
+            type: "object",
+            required: ["version", "algorithm", "keyId", "encryptedKey", "iv", "ciphertext", "payloadHash", "createdAt"],
+            properties: {
+              version: { type: "string", example: "proofvault-encrypted-payload-v1" },
+              algorithm: { type: "string", example: "RSA-OAEP-256+A256GCM" },
+              keyId: { type: "string", example: "proofvault-worker-local-v1" },
+              encryptedKey: { type: "string", example: "base64-encrypted-aes-key" },
+              iv: { type: "string", example: "base64-aes-gcm-iv" },
+              ciphertext: { type: "string", example: "base64-encrypted-json-payload" },
+              authTag: { type: "string", example: "base64-aes-gcm-auth-tag" },
+              aad: { type: "string", example: "atlasx-exchange:proof-request" },
+              payloadHash: { type: "string", example: "0xpayloadhash" },
+              createdAt: { type: "string", example: "2026-08-05T15:19:00.000Z" },
+            },
+          },
+          walletReferenceSummaries: {
+            type: "array",
+            minItems: 1,
+            items: {
+              type: "object",
+              required: ["assetSymbol", "chain", "walletAddressHash"],
+              additionalProperties: false,
+              properties: {
+                assetSymbol: { type: "string", example: "BTC" },
+                chain: { type: "string", example: "bitcoin" },
+                sourceLabel: { type: "string", example: "BTC Reserve Source 1" },
+                walletAddressHash: { type: "string", example: "0xwalletaddresshashbtc" },
+                maskedWalletAddress: { type: "string", example: "bc1q...k42p" },
+                encryptionVersion: { type: "string", example: "proofvault-encrypted-payload-v1" },
+                validationStatus: { type: "string", example: "pending" },
+              },
+            },
           },
           walletReferences: {
             type: "array",

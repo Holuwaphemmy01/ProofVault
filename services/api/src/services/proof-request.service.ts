@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { ethers } from "ethers";
 import type { AssetBalance, ProofRequest } from "@prisma/client";
+import { canonicalJson, sha256Hex } from "@proofvault/proof-payload";
 import { prisma } from "../lib/prisma.js";
 import type { CreateProofRequestInput } from "../schemas/proof-request.schema.js";
 import { createProofRequestOnChain } from "./contract.service.js";
@@ -32,19 +33,22 @@ function toProofRequestResponse(proofRequest: ProofRequestWithAssetBalances) {
     projectId: proofRequest.projectId,
     projectSlug: proofRequest.projectSlug,
     proofName: proofRequest.proofName,
-    requiredThreshold: proofRequest.requiredThreshold,
-    thresholdCurrency: proofRequest.thresholdCurrency,
     thresholdCommitment: proofRequest.thresholdCommitment,
     selectedAssets: proofRequest.selectedAssets,
     selectedAssetsHash: proofRequest.selectedAssetsHash,
     privacyMode: proofRequest.privacyMode,
     metadataHash: proofRequest.metadataHash,
+    encryptedPayloadHash: proofRequest.encryptedPayloadHash,
+    encryptionVersion: proofRequest.encryptionVersion,
+    encryptionAlgorithm: proofRequest.encryptionAlgorithm,
+    encryptionKeyId: proofRequest.encryptionKeyId,
     status: proofRequest.status,
     onChainRequestId: proofRequest.onChainRequestId,
     onChainTxHash: proofRequest.onChainTxHash,
     onChainStatus: proofRequest.onChainStatus,
     createdAt: proofRequest.createdAt,
     updatedAt: proofRequest.updatedAt,
+    walletReferenceSummaries: proofRequest.assetBalances.map(toAssetReferenceSummary),
     walletReferences: proofRequest.assetBalances.map(toAssetReferenceSummary),
   };
 }
@@ -61,20 +65,37 @@ export async function createProofRequest(input: CreateProofRequestInput) {
   const selectedAssets = input.selectedAssets.map((asset) => asset.trim()).join(",");
   const selectedAssetsHash = ethers.keccak256(ethers.toUtf8Bytes(selectedAssets));
   const thresholdSalt = crypto.randomBytes(16).toString("hex");
+  const encryptedPayloadJson = input.encryptedProofPayload
+    ? canonicalJson(input.encryptedProofPayload)
+    : undefined;
+  const encryptedPayloadHash = input.encryptedProofPayload?.payloadHash;
+  const walletReferenceSummaries = input.encryptedProofPayload
+    ? input.walletReferenceSummaries ?? []
+    : (input.walletReferences ?? []).map((reference) => ({
+      assetSymbol: reference.assetSymbol,
+      chain: reference.chain,
+      sourceLabel: reference.sourceLabel,
+      walletAddressHash: reference.walletAddressHash,
+      maskedWalletAddress: reference.maskedWalletAddress,
+      encryptionVersion: reference.encryptionVersion,
+      validationStatus: "pending",
+    }));
   const thresholdCommitment = sha256([
     input.projectSlug,
-    input.requiredThreshold,
+    input.requiredThreshold ?? encryptedPayloadHash,
     input.thresholdCurrency,
     selectedAssets,
+    encryptedPayloadHash,
     thresholdSalt,
   ].join(":"));
-  const metadataHash = sha256(JSON.stringify({
+  const metadataHash = sha256(canonicalJson({
     projectSlug: input.projectSlug,
     proofName: input.proofName,
     selectedAssets: input.selectedAssets,
     privacyMode: input.privacyMode,
     thresholdCurrency: input.thresholdCurrency,
-    walletReferences: input.walletReferences.map((reference) => ({
+    encryptedPayloadHash,
+    walletReferenceSummaries: walletReferenceSummaries.map((reference) => ({
       assetSymbol: reference.assetSymbol,
       chain: reference.chain,
       sourceLabel: reference.sourceLabel,
@@ -89,25 +110,42 @@ export async function createProofRequest(input: CreateProofRequestInput) {
       projectId: project.id,
       projectSlug: input.projectSlug,
       proofName: input.proofName,
-      requiredThreshold: input.requiredThreshold,
+      requiredThreshold: input.requiredThreshold ?? 0,
       thresholdCurrency: input.thresholdCurrency,
       thresholdCommitment,
       selectedAssets: input.selectedAssets,
       selectedAssetsHash,
       privacyMode: input.privacyMode,
       metadataHash,
+      encryptedPayload: encryptedPayloadJson,
+      encryptedPayloadHash,
+      encryptionVersion: input.encryptedProofPayload?.version,
+      encryptionAlgorithm: input.encryptedProofPayload?.algorithm,
+      encryptionKeyId: input.encryptedProofPayload?.keyId,
       status: "pending",
       assetBalances: {
-        create: input.walletReferences.map((reference) => ({
+        create: walletReferenceSummaries.map((reference) => ({
           assetSymbol: reference.assetSymbol,
           chain: reference.chain,
           sourceLabel: reference.sourceLabel,
-          encryptedWalletReference: reference.encryptedWalletReference,
-          encryptedPayloadHash: sha256(reference.encryptedWalletReference),
+          encryptedWalletReference: input.encryptedProofPayload ? undefined : input.walletReferences?.find(
+            (walletReference) =>
+              walletReference.assetSymbol === reference.assetSymbol &&
+              walletReference.chain === reference.chain &&
+              walletReference.walletAddressHash === reference.walletAddressHash,
+          )?.encryptedWalletReference,
+          encryptedPayloadHash: input.encryptedProofPayload
+            ? encryptedPayloadHash
+            : sha256Hex(input.walletReferences?.find(
+              (walletReference) =>
+                walletReference.assetSymbol === reference.assetSymbol &&
+                walletReference.chain === reference.chain &&
+                walletReference.walletAddressHash === reference.walletAddressHash,
+            )?.encryptedWalletReference ?? ""),
           encryptionVersion: reference.encryptionVersion,
           walletAddressHash: reference.walletAddressHash,
           maskedWalletAddress: reference.maskedWalletAddress,
-          validationStatus: "pending",
+          validationStatus: reference.validationStatus ?? "pending",
         })),
       },
     },

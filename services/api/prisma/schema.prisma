@@ -74,6 +74,11 @@ model ProofRequest {
   selectedAssetsHash   String
   privacyMode          PrivacyMode
   metadataHash         String
+  encryptedPayload     String?
+  encryptedPayloadHash String?
+  encryptionVersion    String?
+  encryptionAlgorithm  String?
+  encryptionKeyId      String?
   status               ProofRequestStatus @default(draft)
   onChainRequestId     String?
   onChainTxHash        String?
