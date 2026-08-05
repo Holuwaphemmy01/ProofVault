@@ -8,7 +8,10 @@ function expectNoPrivateLeak(output: unknown) {
 
   expect(serialized).not.toContain("walletAddress");
   expect(output).not.toHaveProperty("balance");
+  expect(output).not.toHaveProperty("price");
+  expect(output).not.toHaveProperty("usdValue");
   expect(serialized).not.toContain("totalReserve");
+  expect(serialized).not.toContain("totalReserveUSD");
   expect(serialized).not.toContain("bc1q-private-demo-wallet-address");
 }
 
@@ -24,7 +27,10 @@ describe("privacy boundaries", () => {
 
     expect(result).not.toHaveProperty("walletAddress");
     expect(result).not.toHaveProperty("balance");
+    expect(result).not.toHaveProperty("price");
+    expect(result).not.toHaveProperty("usdValue");
     expect(result).not.toHaveProperty("totalReserve");
+    expect(result).not.toHaveProperty("totalReserveUSD");
     expectNoPrivateLeak(result);
   });
 

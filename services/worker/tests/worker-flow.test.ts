@@ -12,7 +12,7 @@ describe("worker flow", () => {
       onChainRequestId: "1",
       projectSlug: "atlasx-exchange",
       privatePayload: privatePayload({
-        requiredThreshold: 900000,
+        requiredThreshold: 200000,
         selectedAssets: ["BTC", "XRP"],
         wallets: [
           {

@@ -9,22 +9,22 @@ export class MockBalanceAdapter implements BalanceAdapter {
     return {
       assetSymbol: request.assetSymbol,
       chain: request.chain,
-      balance: this.getMockUsdBalance(request.assetSymbol),
-      currency: "USD",
+      balance: this.getMockAssetBalance(request.assetSymbol),
+      unit: "asset",
       source: "mock",
     };
   }
 
-  private getMockUsdBalance(assetSymbol: string) {
+  private getMockAssetBalance(assetSymbol: string) {
     switch (assetSymbol.toUpperCase()) {
       case "BTC":
-        return 750000;
+        return 0.025;
       case "XRP":
-        return 200000;
+        return 500000;
       case "DOGE":
-        return 150000;
+        return 2000000;
       case "ETH":
-        return 300000;
+        return 10;
       default:
         return 100000;
     }

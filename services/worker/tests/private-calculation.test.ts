@@ -14,7 +14,7 @@ describe("private reserve calculation", () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
-        requiredThreshold: 900000,
+        requiredThreshold: 200000,
         selectedAssets: ["BTC", "XRP"],
         wallets: [
           {
@@ -39,7 +39,7 @@ describe("private reserve calculation", () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
-        requiredThreshold: 500000,
+        requiredThreshold: 200000,
         selectedAssets: ["DOGE"],
         wallets: [
           {

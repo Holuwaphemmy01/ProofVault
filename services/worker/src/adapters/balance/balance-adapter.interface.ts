@@ -8,7 +8,7 @@ export interface BalanceResult {
   assetSymbol: string;
   chain: string;
   balance: number;
-  currency: "USD";
+  unit: "asset";
   source: "mock" | "fdc" | "rpc";
 }
 
