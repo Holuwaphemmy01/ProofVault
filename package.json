@@ -11,6 +11,7 @@
     "build:web": "pnpm --filter @proofvault/web build",
     "build:api": "pnpm --filter @proofvault/api build",
     "build:worker": "pnpm --filter @proofvault/worker build",
+    "typecheck:worker": "pnpm --filter @proofvault/worker typecheck",
     "compile:contracts": "pnpm --filter @proofvault/contracts compile",
     "test:contracts": "pnpm --filter @proofvault/contracts test"
   }

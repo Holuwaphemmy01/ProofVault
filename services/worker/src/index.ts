@@ -1,19 +1,11 @@
-import dotenv from "dotenv";
-import { verifyProof } from "./verify-proof.js";
+import { buildApp } from "./app.js";
+import { env } from "./lib/env.js";
 
-dotenv.config();
+const app = await buildApp();
 
-const port = Number(process.env.WORKER_PORT || 5000);
-const verification = verifyProof();
-
-console.log(
-  JSON.stringify(
-    {
-      service: "proofvault-worker",
-      port,
-      verification,
-    },
-    null,
-    2,
-  ),
-);
+try {
+  await app.listen({ port: env.WORKER_PORT, host: "0.0.0.0" });
+} catch (error) {
+  app.log.error(error);
+  process.exit(1);
+}
