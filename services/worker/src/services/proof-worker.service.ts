@@ -1,6 +1,7 @@
 import type { ProofJobInput } from "../schemas/proof-job.schema.js";
 import type { PrivateProofPayload } from "@proofvault/proof-payload";
 import { createJob, updateJob } from "../lib/in-memory-job-store.js";
+import { env } from "../lib/env.js";
 import { sendWorkerCallback } from "./callback.service.js";
 import { decryptProofPayload } from "./payload-decryption.service.js";
 import { calculatePrivateReserve } from "./private-reserve-calculation.service.js";
@@ -46,6 +47,8 @@ export async function processProofJob(input: ProofJobInput) {
       privatePayload,
     });
     const signature = await signProofResult({
+      registryAddress: env.PROOFVAULT_REGISTRY_ADDRESS,
+      chainId: env.CHAIN_ID,
       onChainRequestId: input.onChainRequestId,
       proofHash: reserveResult.proofHash,
       outcome: reserveResult.outcome,
