@@ -16,7 +16,9 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.workerCallback.create({
+    const db = tx as typeof prisma;
+
+    await db.workerCallback.create({
       data: {
         proofRequestId: input.proofRequestId,
         status: input.status,
@@ -32,7 +34,7 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
       },
     });
 
-    const result = await tx.proofResult.upsert({
+    const result = await db.proofResult.upsert({
       where: { proofRequestId: input.proofRequestId },
       update: {
         outcome: input.status,
@@ -65,7 +67,7 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
       },
     });
 
-    await tx.proofRequest.update({
+    await db.proofRequest.update({
       where: { id: proofRequest.id },
       data: {
         status: input.status === "PASS" || input.status === "FAIL" ? "completed" : proofRequest.status,

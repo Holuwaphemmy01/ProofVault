@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import type { CreateProjectInput } from "../schemas/project.schema.js";
 import {
@@ -99,7 +98,11 @@ export async function createProject(input: CreateProjectInput) {
       };
     }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
       throw new Error("Project slug already exists");
     }
 
@@ -128,10 +131,13 @@ export async function getProjectProfileBySlug(slug: string) {
     message: undefined as string | undefined,
     project: undefined as Awaited<ReturnType<typeof getProjectOnChain>> | undefined,
   };
-  let proofStatus: Awaited<ReturnType<typeof getLatestProofStatusOnChain>> = { hasProof: false };
+  let proofStatus: Awaited<ReturnType<typeof getLatestProofStatusOnChain>> = {
+    hasProof: false,
+    reason: "No proof result found",
+  };
 
   try {
-    const registered = await projectExistsOnChain(slug);
+    const { exists: registered } = await projectExistsOnChain(slug);
     onChain.registered = registered;
     onChain.status = registered ? "registered" : "not_registered";
 
