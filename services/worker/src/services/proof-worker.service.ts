@@ -40,7 +40,7 @@ export async function processProofJob(input: ProofJobInput) {
 
     const workerSignedAt = Math.floor(Date.now() / 1000);
     const privatePayload = toPrivatePayload(input);
-    const reserveResult = calculatePrivateReserve({
+    const reserveResult = await calculatePrivateReserve({
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,
       projectSlug: input.projectSlug,

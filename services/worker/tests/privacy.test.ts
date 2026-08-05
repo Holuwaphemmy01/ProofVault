@@ -13,8 +13,8 @@ function expectNoPrivateLeak(output: unknown) {
 }
 
 describe("privacy boundaries", () => {
-  it("does not expose wallet addresses or balances in calculation output", () => {
-    const result = calculatePrivateReserve({
+  it("does not expose wallet addresses or balances in calculation output", async () => {
+    const result = await calculatePrivateReserve({
       proofRequestId: "proof-request-id",
       onChainRequestId: "1",
       projectSlug: "atlasx-exchange",

@@ -3,6 +3,7 @@ import {
   sha256Hex,
   type PrivateProofPayload,
 } from "@proofvault/proof-payload";
+import { getBalanceAdapter } from "../adapters/balance/adapter-factory.js";
 import type { ProofOutcome } from "../types/worker.types.js";
 
 type CalculatePrivateReserveInput = {
@@ -13,20 +14,7 @@ type CalculatePrivateReserveInput = {
   workerSignedAt: number;
 };
 
-export function simulateAssetBalance(assetSymbol: string): number {
-  switch (assetSymbol.toUpperCase()) {
-    case "BTC":
-      return 750000;
-    case "FLR":
-      return 400000;
-    case "ETH":
-      return 300000;
-    default:
-      return 100000;
-  }
-}
-
-export function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
+export async function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
   const { privatePayload } = input;
 
   if (privatePayload.wallets.length === 0) {
@@ -37,9 +25,16 @@ export function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
     throw new Error("Private proof payload threshold must be greater than zero");
   }
 
-  const totalReserve = privatePayload.wallets.reduce((total, wallet) => {
-    return total + simulateAssetBalance(wallet.assetSymbol);
-  }, 0);
+  const balanceResults = await Promise.all(privatePayload.wallets.map((wallet) => {
+    const adapter = getBalanceAdapter(wallet.chain);
+
+    return adapter.getBalance({
+      chain: wallet.chain,
+      assetSymbol: wallet.assetSymbol,
+      walletAddressHash: sha256Hex(wallet.walletAddress),
+    });
+  }));
+  const totalReserve = balanceResults.reduce((total, result) => total + result.balance, 0);
   const thresholdMet = totalReserve >= privatePayload.requiredThreshold;
   const outcome: ProofOutcome = thresholdMet ? "PASS" : "FAIL";
   const verifiedWith = ["MOCK_CONFIDENTIAL_COMPUTE"];

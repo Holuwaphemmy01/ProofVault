@@ -7,11 +7,26 @@ import { privatePayload, workerAddress } from "./helpers.js";
 describe("worker flow", () => {
   it("calculates, signs, and receipts a proof result", async () => {
     const workerSignedAt = Math.floor(Date.now() / 1000);
-    const reserveResult = calculatePrivateReserve({
+    const reserveResult = await calculatePrivateReserve({
       proofRequestId: "proof-request-id",
       onChainRequestId: "1",
       projectSlug: "atlasx-exchange",
-      privatePayload: privatePayload(),
+      privatePayload: privatePayload({
+        requiredThreshold: 900000,
+        selectedAssets: ["BTC", "XRP"],
+        wallets: [
+          {
+            assetSymbol: "BTC",
+            chain: "bitcoin",
+            walletAddress: "bc1q-private-demo-wallet-address",
+          },
+          {
+            assetSymbol: "XRP",
+            chain: "xrp",
+            walletAddress: "r-private-demo-wallet-address",
+          },
+        ],
+      }),
       workerSignedAt,
     });
     const signature = await signProofResult({

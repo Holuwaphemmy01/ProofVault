@@ -10,26 +10,42 @@ const baseInput = {
 };
 
 describe("private reserve calculation", () => {
-  it("returns PASS when BTC and FLR meet the threshold", () => {
-    const result = calculatePrivateReserve({
+  it("returns PASS when BTC and XRP meet the threshold", async () => {
+    const result = await calculatePrivateReserve({
       ...baseInput,
-      privatePayload: privatePayload(),
+      privatePayload: privatePayload({
+        requiredThreshold: 900000,
+        selectedAssets: ["BTC", "XRP"],
+        wallets: [
+          {
+            assetSymbol: "BTC",
+            chain: "bitcoin",
+            walletAddress: "bc1q-private-demo-wallet-address",
+          },
+          {
+            assetSymbol: "XRP",
+            chain: "xrp",
+            walletAddress: "r-private-demo-wallet-address",
+          },
+        ],
+      }),
     });
 
     expect(result.thresholdMet).toBe(true);
     expect(result.outcome).toBe("PASS");
   });
 
-  it("returns FAIL when BTC alone is below the threshold", () => {
-    const result = calculatePrivateReserve({
+  it("returns FAIL when DOGE alone is below the threshold", async () => {
+    const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
-        selectedAssets: ["BTC"],
+        requiredThreshold: 500000,
+        selectedAssets: ["DOGE"],
         wallets: [
           {
-            assetSymbol: "BTC",
-            chain: "bitcoin",
-            walletAddress: "bc1q-private-demo-wallet-address",
+            assetSymbol: "DOGE",
+            chain: "dogecoin",
+            walletAddress: "D-private-demo-wallet-address",
           },
         ],
       }),
@@ -40,16 +56,16 @@ describe("private reserve calculation", () => {
   });
 
   it("rejects empty wallets", () => {
-    expect(() => calculatePrivateReserve({
+    expect(calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({ wallets: [] }),
-    })).toThrow("at least one wallet");
+    })).rejects.toThrow("at least one wallet");
   });
 
   it("rejects zero threshold", () => {
-    expect(() => calculatePrivateReserve({
+    expect(calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({ requiredThreshold: 0 }),
-    })).toThrow("threshold must be greater than zero");
+    })).rejects.toThrow("threshold must be greater than zero");
   });
 });
