@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedAsset } from "@proofvault/config";
 import { encryptedProofPayloadSchema } from "@proofvault/proof-payload";
 
 export const walletReferenceSchema = z.object({
@@ -24,6 +25,26 @@ export const proofJobSchema = z.object({
   selectedAssets: z.array(z.string().min(1)).min(1).optional(),
   walletReferences: z.array(walletReferenceSchema).min(1).optional(),
 }).superRefine((value, context) => {
+  for (const [index, asset] of (value.selectedAssets ?? []).entries()) {
+    if (!isSupportedAsset(asset)) {
+      context.addIssue({
+        code: "custom",
+        path: ["selectedAssets", index],
+        message: `Unsupported asset: ${asset}`,
+      });
+    }
+  }
+
+  for (const [index, reference] of (value.walletReferences ?? []).entries()) {
+    if (!isSupportedAsset(reference.assetSymbol)) {
+      context.addIssue({
+        code: "custom",
+        path: ["walletReferences", index, "assetSymbol"],
+        message: `Unsupported asset: ${reference.assetSymbol}`,
+      });
+    }
+  }
+
   if (value.encryptedProofPayload) {
     return;
   }

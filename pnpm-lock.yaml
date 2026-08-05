@@ -67,6 +67,12 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/config:
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/proof-payload:
     dependencies:
       zod:
@@ -94,6 +100,9 @@ importers:
       '@prisma/client':
         specifier: 6.14.0
         version: 6.14.0(prisma@6.14.0(typescript@5.9.3))(typescript@5.9.3)
+      '@proofvault/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@proofvault/proof-payload':
         specifier: workspace:*
         version: link:../../packages/proof-payload
@@ -137,6 +146,9 @@ importers:
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
+      '@proofvault/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@proofvault/proof-payload':
         specifier: workspace:*
         version: link:../../packages/proof-payload

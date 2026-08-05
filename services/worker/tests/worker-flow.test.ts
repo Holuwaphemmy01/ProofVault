@@ -13,16 +13,16 @@ describe("worker flow", () => {
       projectSlug: "atlasx-exchange",
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["BTC", "XRP"],
+        selectedAssets: ["FBTC", "FXRP"],
         wallets: [
           {
-            assetSymbol: "BTC",
-            chain: "bitcoin",
+            assetSymbol: "FBTC",
+            chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },
           {
-            assetSymbol: "XRP",
-            chain: "xrp",
+            assetSymbol: "FXRP",
+            chain: "flare",
             walletAddress: "r-private-demo-wallet-address",
           },
         ],

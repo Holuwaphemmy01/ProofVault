@@ -3,6 +3,7 @@ import {
   sha256Hex,
   type PrivateProofPayload,
 } from "@proofvault/proof-payload";
+import { isSupportedAsset } from "@proofvault/config";
 import { getBalanceAdapter } from "../adapters/balance/adapter-factory.js";
 import { getPriceAdapter } from "../adapters/price/price-adapter.factory.js";
 import type { ProofOutcome } from "../types/worker.types.js";
@@ -24,6 +25,18 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
 
   if (privatePayload.requiredThreshold <= 0) {
     throw new Error("Private proof payload threshold must be greater than zero");
+  }
+
+  for (const asset of privatePayload.selectedAssets) {
+    if (!isSupportedAsset(asset)) {
+      throw new Error(`Unsupported asset: ${asset}`);
+    }
+  }
+
+  for (const wallet of privatePayload.wallets) {
+    if (!isSupportedAsset(wallet.assetSymbol)) {
+      throw new Error(`Unsupported asset: ${wallet.assetSymbol}`);
+    }
   }
 
   const reserveValues = await Promise.all(privatePayload.wallets.map(async (wallet) => {

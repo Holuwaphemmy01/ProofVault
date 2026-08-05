@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import Fastify from "fastify";
+import { assetsRoutes } from "./routes/assets.routes.js";
 import { contractRoutes } from "./routes/contract.routes.js";
 import { healthRoutes } from "./routes/health.routes.js";
 import { projectsRoutes } from "./routes/projects.routes.js";
@@ -32,6 +33,7 @@ export async function buildApp() {
       },
       tags: [
         { name: "Health", description: "Service health checks" },
+        { name: "Assets", description: "Supported asset metadata routes" },
         { name: "Projects", description: "Project metadata routes" },
         { name: "Proof Requests", description: "Reserve proof request metadata routes" },
         { name: "Contract", description: "ProofVaultRegistry contract status and event routes" },
@@ -50,6 +52,7 @@ export async function buildApp() {
   });
 
   await app.register(healthRoutes);
+  await app.register(assetsRoutes);
   await app.register(projectsRoutes);
   await app.register(proofRequestsRoutes);
   await app.register(contractRoutes);

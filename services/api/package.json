@@ -21,6 +21,7 @@
     "@fastify/swagger": "^9.8.1",
     "@fastify/swagger-ui": "^6.1.1",
     "@prisma/client": "6.14.0",
+    "@proofvault/config": "workspace:*",
     "@proofvault/proof-payload": "workspace:*",
     "dotenv": "^17.2.1",
     "ethers": "^6.17.0",

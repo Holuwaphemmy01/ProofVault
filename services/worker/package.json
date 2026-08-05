@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
+    "@proofvault/config": "workspace:*",
     "@proofvault/proof-payload": "workspace:*",
     "dotenv": "^17.2.1",
     "ethers": "^6.17.0",

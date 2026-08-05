@@ -3,6 +3,7 @@ import type {
   BalanceRequest,
   BalanceResult,
 } from "./balance-adapter.interface.js";
+import { getBaseAssetSymbol } from "@proofvault/config";
 
 export class MockBalanceAdapter implements BalanceAdapter {
   async getBalance(request: BalanceRequest): Promise<BalanceResult> {
@@ -16,7 +17,7 @@ export class MockBalanceAdapter implements BalanceAdapter {
   }
 
   private getMockAssetBalance(assetSymbol: string) {
-    switch (assetSymbol.toUpperCase()) {
+    switch (getBaseAssetSymbol(assetSymbol)) {
       case "BTC":
         return 0.025;
       case "XRP":
@@ -25,6 +26,10 @@ export class MockBalanceAdapter implements BalanceAdapter {
         return 2000000;
       case "ETH":
         return 10;
+      case "FLR":
+        return 100000;
+      case "USD":
+        return 100000;
       default:
         return 100000;
     }

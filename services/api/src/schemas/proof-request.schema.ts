@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedAsset } from "@proofvault/config";
 import {
   encryptedProofPayloadSchema,
   publicWalletReferenceSummarySchema,
@@ -29,6 +30,16 @@ export const createProofRequestSchema = z.object({
   walletReferenceSummaries: z.array(publicWalletReferenceSummarySchema).min(1).optional(),
   walletReferences: z.array(walletReferenceSchema).min(1).optional(),
 }).superRefine((value, context) => {
+  for (const [index, asset] of value.selectedAssets.entries()) {
+    if (!isSupportedAsset(asset)) {
+      context.addIssue({
+        code: "custom",
+        path: ["selectedAssets", index],
+        message: `Unsupported asset: ${asset}`,
+      });
+    }
+  }
+
   if (value.encryptedProofPayload) {
     if (!value.walletReferenceSummaries?.length) {
       context.addIssue({
@@ -36,6 +47,16 @@ export const createProofRequestSchema = z.object({
         path: ["walletReferenceSummaries"],
         message: "walletReferenceSummaries is required when encryptedProofPayload is provided",
       });
+    }
+
+    for (const [index, reference] of (value.walletReferenceSummaries ?? []).entries()) {
+      if (!isSupportedAsset(reference.assetSymbol)) {
+        context.addIssue({
+          code: "custom",
+          path: ["walletReferenceSummaries", index, "assetSymbol"],
+          message: `Unsupported asset: ${reference.assetSymbol}`,
+        });
+      }
     }
 
     return;
@@ -55,6 +76,16 @@ export const createProofRequestSchema = z.object({
       path: ["walletReferences"],
       message: "walletReferences is required for legacy proof requests",
     });
+  }
+
+  for (const [index, reference] of (value.walletReferences ?? []).entries()) {
+    if (!isSupportedAsset(reference.assetSymbol)) {
+      context.addIssue({
+        code: "custom",
+        path: ["walletReferences", index, "assetSymbol"],
+        message: `Unsupported asset: ${reference.assetSymbol}`,
+      });
+    }
   }
 });
 

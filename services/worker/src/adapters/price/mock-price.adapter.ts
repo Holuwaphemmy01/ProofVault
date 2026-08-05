@@ -3,6 +3,7 @@ import type {
   PriceRequest,
   PriceResult,
 } from "./price-adapter.interface.js";
+import { getBaseAssetSymbol } from "@proofvault/config";
 
 export class MockPriceAdapter implements PriceAdapter {
   async getPrice(request: PriceRequest): Promise<PriceResult> {
@@ -15,7 +16,7 @@ export class MockPriceAdapter implements PriceAdapter {
   }
 
   private getMockUsdPrice(assetSymbol: string) {
-    switch (assetSymbol.toUpperCase()) {
+    switch (getBaseAssetSymbol(assetSymbol)) {
       case "BTC":
         return 27000;
       case "XRP":
@@ -24,6 +25,10 @@ export class MockPriceAdapter implements PriceAdapter {
         return 0.08;
       case "ETH":
         return 1800;
+      case "FLR":
+        return 0.025;
+      case "USD":
+        return 1;
       default:
         return 1;
     }

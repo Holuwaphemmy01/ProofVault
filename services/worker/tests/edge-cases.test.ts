@@ -8,11 +8,11 @@ describe("worker edge cases", () => {
       onChainRequestId: "1",
       projectSlug: "atlasx-exchange",
       requiredThreshold: 1000000,
-      selectedAssets: ["BTC"],
+      selectedAssets: ["FBTC"],
       walletReferences: [
         {
-          assetSymbol: "BTC",
-          chain: "bitcoin",
+          assetSymbol: "FBTC",
+          chain: "flare",
           encryptedWalletReference: "0xencrypted",
           walletAddressHash: "0xhash",
         },
@@ -25,11 +25,11 @@ describe("worker edge cases", () => {
       proofRequestId: "proof-request-id",
       projectSlug: "atlasx-exchange",
       requiredThreshold: 1000000,
-      selectedAssets: ["BTC"],
+      selectedAssets: ["FBTC"],
       walletReferences: [
         {
-          assetSymbol: "BTC",
-          chain: "bitcoin",
+          assetSymbol: "FBTC",
+          chain: "flare",
           encryptedWalletReference: "0xencrypted",
           walletAddressHash: "0xhash",
         },

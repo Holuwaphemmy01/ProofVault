@@ -10,21 +10,21 @@ const baseInput = {
 };
 
 describe("private reserve calculation", () => {
-  it("returns PASS when BTC and XRP meet the threshold", async () => {
+  it("returns PASS when FBTC and FXRP meet the threshold", async () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["BTC", "XRP"],
+        selectedAssets: ["FBTC", "FXRP"],
         wallets: [
           {
-            assetSymbol: "BTC",
-            chain: "bitcoin",
+            assetSymbol: "FBTC",
+            chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },
           {
-            assetSymbol: "XRP",
-            chain: "xrp",
+            assetSymbol: "FXRP",
+            chain: "flare",
             walletAddress: "r-private-demo-wallet-address",
           },
         ],
@@ -40,11 +40,11 @@ describe("private reserve calculation", () => {
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["DOGE"],
+        selectedAssets: ["FDOGE"],
         wallets: [
           {
-            assetSymbol: "DOGE",
-            chain: "dogecoin",
+            assetSymbol: "FDOGE",
+            chain: "flare",
             walletAddress: "D-private-demo-wallet-address",
           },
         ],
