@@ -13,7 +13,11 @@ export const walletReferenceSchema = z.object({
 export const proofJobSchema = z.object({
   proofRequestId: z.string().min(1),
   onChainRequestId: z.string().min(1),
+  projectName: z.string().min(1).optional(),
   projectSlug: z.string().min(1),
+  thresholdCommitment: z.string().min(1).optional(),
+  selectedAssetsHash: z.string().min(1).optional(),
+  encryptedPayloadHash: z.string().min(1).optional(),
   encryptedProofPayload: encryptedProofPayloadSchema.optional(),
   requiredThreshold: z.number().positive().optional(),
   thresholdCurrency: z.string().min(1).default("USD"),

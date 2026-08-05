@@ -136,6 +136,7 @@ model ProofResult {
   relayedBy          String?
   verifiedWith       String[]
   publicMessage      String?
+  receipt            Json?
 
   project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   proofRequest       ProofRequest @relation(fields: [proofRequestId], references: [id], onDelete: Cascade)

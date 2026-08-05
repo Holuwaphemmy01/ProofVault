@@ -12,7 +12,11 @@ export async function jobsRoutes(app: FastifyInstance) {
         properties: {
           proofRequestId: { type: "string", example: "database-proof-request-id" },
           onChainRequestId: { type: "string", example: "1" },
+          projectName: { type: "string", example: "AtlasX Exchange" },
           projectSlug: { type: "string", example: "atlasx-exchange" },
+          thresholdCommitment: { type: "string", example: "0xthresholdcommitment" },
+          selectedAssetsHash: { type: "string", example: "0xselectedassetshash" },
+          encryptedPayloadHash: { type: "string", example: "0xencryptedpayloadhash" },
           encryptedProofPayload: {
             type: "object",
             properties: {

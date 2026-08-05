@@ -1,9 +1,22 @@
 import crypto from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import type { WorkerProofResultInput } from "../schemas/worker-callback.schema.js";
 
 function sha256(value: string) {
   return `0x${crypto.createHash("sha256").update(value).digest("hex")}`;
+}
+
+function getResultMetadataHash(input: WorkerProofResultInput) {
+  return input.resultMetadataHash ?? sha256(JSON.stringify({
+    proofRequestId: input.proofRequestId,
+    status: input.status,
+    verifiedWith: input.verifiedWith,
+  }));
+}
+
+function toPrismaJson(value: WorkerProofResultInput["receipt"]) {
+  return value as Prisma.InputJsonValue | undefined;
 }
 
 export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
@@ -27,12 +40,16 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
           status: input.status,
           thresholdMet: input.thresholdMet,
           proofHash: input.proofHash,
+          resultMetadataHash: input.resultMetadataHash,
           workerSignedAt: input.workerSignedAt,
           verifiedWith: input.verifiedWith,
+          receipt: input.receipt,
         })),
         processed: true,
       },
     });
+
+    const resultMetadataHash = getResultMetadataHash(input);
 
     const result = await db.proofResult.upsert({
       where: { proofRequestId: input.proofRequestId },
@@ -40,14 +57,11 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
         outcome: input.status,
         thresholdMet: input.thresholdMet,
         proofHash: input.proofHash,
-        resultMetadataHash: sha256(JSON.stringify({
-          proofRequestId: input.proofRequestId,
-          status: input.status,
-          verifiedWith: input.verifiedWith,
-        })),
+        resultMetadataHash,
         workerSignedAt: new Date(input.workerSignedAt * 1000),
         submittedBy: "proofvault-worker",
         verifiedWith: input.verifiedWith,
+        receipt: toPrismaJson(input.receipt),
       },
       create: {
         projectId: proofRequest.projectId,
@@ -56,14 +70,11 @@ export async function receiveWorkerProofResult(input: WorkerProofResultInput) {
         outcome: input.status,
         thresholdMet: input.thresholdMet,
         proofHash: input.proofHash,
-        resultMetadataHash: sha256(JSON.stringify({
-          proofRequestId: input.proofRequestId,
-          status: input.status,
-          verifiedWith: input.verifiedWith,
-        })),
+        resultMetadataHash,
         workerSignedAt: new Date(input.workerSignedAt * 1000),
         submittedBy: "proofvault-worker",
         verifiedWith: input.verifiedWith,
+        receipt: toPrismaJson(input.receipt),
       },
     });
 

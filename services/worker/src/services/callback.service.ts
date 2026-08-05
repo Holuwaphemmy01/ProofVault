@@ -9,6 +9,8 @@ type SendWorkerCallbackInput = {
   workerSignedAt: number;
   signature: string;
   verifiedWith: string[];
+  resultMetadataHash?: string;
+  receipt?: Record<string, unknown>;
 };
 
 export async function sendWorkerCallback(input: SendWorkerCallbackInput) {
@@ -29,9 +31,11 @@ export async function sendWorkerCallback(input: SendWorkerCallbackInput) {
         status: input.outcome,
         thresholdMet: input.thresholdMet,
         proofHash: input.proofHash,
+        resultMetadataHash: input.resultMetadataHash,
         workerSignedAt: input.workerSignedAt,
         signature: input.signature,
         verifiedWith: input.verifiedWith,
+        receipt: input.receipt,
       }),
     });
 

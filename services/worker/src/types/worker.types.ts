@@ -11,6 +11,7 @@ export type PublicWorkerJob = {
   thresholdMet?: boolean;
   proofHash?: string;
   resultMetadataHash?: string;
+  receipt?: Record<string, unknown>;
   signature?: string;
   signerAddress?: string;
   workerSignedAt?: number;

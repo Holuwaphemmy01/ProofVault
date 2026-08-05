@@ -5,6 +5,7 @@ import { env } from "../lib/env.js";
 import { sendWorkerCallback } from "./callback.service.js";
 import { decryptProofPayload } from "./payload-decryption.service.js";
 import { calculatePrivateReserve } from "./private-reserve-calculation.service.js";
+import { generateProofReceipt } from "./receipt.service.js";
 import { signProofResult } from "./signature.service.js";
 
 function toPrivatePayload(input: ProofJobInput): PrivateProofPayload {
@@ -55,14 +56,32 @@ export async function processProofJob(input: ProofJobInput) {
       resultMetadataHash: reserveResult.resultMetadataHash,
       workerSignedAt,
     });
+    const receipt = generateProofReceipt({
+      projectName: input.projectName ?? privatePayload.projectSlug,
+      projectSlug: input.projectSlug,
+      proofRequestId: input.proofRequestId,
+      onChainRequestId: input.onChainRequestId,
+      outcome: reserveResult.outcome,
+      thresholdMet: reserveResult.thresholdMet,
+      workerSignedAt: signature.workerSignedAt,
+      proofHash: reserveResult.proofHash,
+      resultMetadataHash: reserveResult.resultMetadataHash,
+      thresholdCommitment: input.thresholdCommitment,
+      selectedAssetsHash: input.selectedAssetsHash ?? "",
+      encryptedPayloadHash: input.encryptedPayloadHash ?? input.encryptedProofPayload?.payloadHash,
+      signerAddress: signature.signerAddress,
+      signature: signature.signature,
+    });
     const callback = await sendWorkerCallback({
       proofRequestId: input.proofRequestId,
       outcome: reserveResult.outcome,
       thresholdMet: reserveResult.thresholdMet,
       proofHash: reserveResult.proofHash,
+      resultMetadataHash: reserveResult.resultMetadataHash,
       workerSignedAt: signature.workerSignedAt,
       signature: signature.signature,
       verifiedWith: reserveResult.verifiedWith,
+      receipt,
     });
 
     return updateJob(job.id, {
@@ -71,6 +90,7 @@ export async function processProofJob(input: ProofJobInput) {
       thresholdMet: reserveResult.thresholdMet,
       proofHash: reserveResult.proofHash,
       resultMetadataHash: reserveResult.resultMetadataHash,
+      receipt,
       signature: signature.signature,
       signerAddress: signature.signerAddress,
       workerSignedAt: signature.workerSignedAt,

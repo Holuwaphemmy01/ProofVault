@@ -15,12 +15,17 @@ export async function workerCallbacksRoutes(app: FastifyInstance) {
           status: { type: "string", enum: ["PASS", "FAIL"], example: "PASS" },
           thresholdMet: { type: "boolean", example: true },
           proofHash: { type: "string", example: "0xabc123" },
+          resultMetadataHash: { type: "string", example: "0xresultmetadatahash" },
           workerSignedAt: { type: "number", example: 1785747060 },
           signature: { type: "string", example: "0xsignature" },
           verifiedWith: {
             type: "array",
             items: { type: "string" },
             example: ["FDC_ADDRESS_VALIDITY", "FDC_PAYMENT", "FTSO", "FCC"],
+          },
+          receipt: {
+            type: "object",
+            additionalProperties: true,
           },
         },
       },
