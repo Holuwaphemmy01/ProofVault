@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Plus } from "@/components/icons"
 import { StatusBadge } from "@/components/dashboard/status-badge"
 
@@ -20,10 +21,10 @@ export function DashboardHeader() {
         <StatusBadge tone="green" dot>
           Connected
         </StatusBadge>
-        <button className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+        <Link href="/create-proof" className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
           <Plus className="h-4 w-4" strokeWidth={2.25} />
           Create New Proof
-        </button>
+        </Link>
       </div>
     </header>
   )

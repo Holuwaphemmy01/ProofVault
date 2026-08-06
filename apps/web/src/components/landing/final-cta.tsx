@@ -1,4 +1,5 @@
 import { ArrowRight } from '@/components/icons'
+import Link from 'next/link'
 
 export function FinalCta() {
   return (
@@ -25,19 +26,19 @@ export function FinalCta() {
               minutes.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <a
-                href="#create"
+              <Link
+                href="/create-proof"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Create Reserve Proof
                 <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href="#verify"
+              </Link>
+              <Link
+                href="/verify/atlasx-exchange"
                 className="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-elevated px-6 text-sm font-semibold text-foreground transition-colors hover:bg-navy"
               >
                 Verify a Project
-              </a>
+              </Link>
             </div>
           </div>
         </div>

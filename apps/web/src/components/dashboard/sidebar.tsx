@@ -10,12 +10,12 @@ import {
 } from "@/components/icons"
 
 const nav = [
-  { label: "Overview", icon: LayoutGrid },
-  { label: "Proof Requests", icon: FileCheck2 },
-  { label: "Reserve Sources", icon: Wallet },
-  { label: "Public Verification", icon: Globe },
-  { label: "Settings", icon: Settings },
-  { label: "Docs", icon: BookOpen },
+  { label: "Overview", href: "/dashboard", icon: LayoutGrid },
+  { label: "Proof Requests", href: "/create-proof", icon: FileCheck2 },
+  { label: "Reserve Sources", href: "/dashboard", icon: Wallet },
+  { label: "Public Verification", href: "/verify/atlasx-exchange", icon: Globe },
+  { label: "Settings", href: "/dashboard", icon: Settings },
+  { label: "Docs", href: "/", icon: BookOpen },
 ]
 
 export function Sidebar({ activeItem = "Overview" }: { activeItem?: string }) {
@@ -32,7 +32,7 @@ export function Sidebar({ activeItem = "Overview" }: { activeItem?: string }) {
           return (
             <Link
               key={item.label}
-              href="#"
+              href={item.href}
               className={
                 active
                   ? "flex items-center gap-3 rounded-md border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm font-medium text-primary"
