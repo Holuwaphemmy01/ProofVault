@@ -90,3 +90,9 @@
     color: var(--foreground);
   }
 }
+
+@layer components {
+  .field-input {
+    @apply w-full rounded-lg border border-border bg-elevated px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-subtle focus:border-primary;
+  }
+}
