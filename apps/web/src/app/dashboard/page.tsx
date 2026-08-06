@@ -6,6 +6,7 @@ import { ReserveHealth } from "@/components/dashboard/reserve-health";
 import { ProofsTable } from "@/components/dashboard/proofs-table";
 import { ActivityPanel } from "@/components/dashboard/activity-panel";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { DashboardProofStatus } from "@/components/proof-status/dashboard-proof-status";
 
 export default function DashboardPage() {
   return (
@@ -23,6 +24,7 @@ export default function DashboardPage() {
               <ProofsTable />
             </div>
             <div className="space-y-6">
+              <DashboardProofStatus />
               <ActivityPanel />
               <QuickActions />
             </div>
