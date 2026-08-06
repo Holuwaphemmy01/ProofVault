@@ -1,20 +1,92 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-heading: ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: var(--navy);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-cyan: var(--cyan);
+  --color-green: var(--green);
+  --color-violet: var(--violet);
+  --color-amber: var(--amber);
+  --color-red: var(--red);
+  --color-destructive: var(--red);
+
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--cyan);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+}
+
 :root {
   color-scheme: dark;
+
+  --background: #020617;
+  --navy: #0b1120;
+  --foreground: #f8fafc;
+
+  --card: #101827;
+  --card-foreground: #f8fafc;
+  --elevated: #151f32;
+
+  --primary: #22d3ee;
+  --primary-foreground: #04121a;
+  --secondary: #151f32;
+  --secondary-foreground: #f8fafc;
+  --accent: #151f32;
+  --accent-foreground: #f8fafc;
+
+  --muted: #101827;
+  --muted-foreground: #94a3b8;
+  --subtle: #64748b;
+
+  --cyan: #22d3ee;
+  --green: #10b981;
+  --violet: #8b5cf6;
+  --amber: #f59e0b;
+  --red: #ef4444;
+
+  --border: #243044;
+  --radius: 0.75rem;
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    @apply border-border;
+  }
 
-body {
-  margin: 0;
-  background: #020617;
-  color: #f8fafc;
-}
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
 
-button,
-a {
-  font: inherit;
+  ::selection {
+    background: color-mix(in oklab, var(--cyan) 30%, transparent);
+    color: var(--foreground);
+  }
 }
