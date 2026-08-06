@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/navbar";
 import { VerificationPreview } from "@/components/landing/verification-preview";
+import { PrivacyExplainer } from "@/components/shared/privacy-explainer";
 
 export default async function VerifyProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -18,6 +19,9 @@ export default async function VerifyProjectPage({ params }: { params: Promise<{ 
           </p>
         </section>
         <VerificationPreview />
+        <section className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+          <PrivacyExplainer />
+        </section>
       </main>
     </div>
   );

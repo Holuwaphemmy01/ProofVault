@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
+import { PrivacyExplainer } from "@/components/shared/privacy-explainer";
 import { api } from "@/lib/api";
 
 const projects = [
@@ -260,13 +261,7 @@ export default function CreateProofPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-elevated p-6">
-            <p className="text-sm font-semibold text-foreground">Privacy notice</p>
-            <p className="mt-2 leading-7 text-muted-foreground">
-              Full wallet addresses are included only inside the mock encrypted payload. The public
-              request stores wallet hashes and masked addresses for safe tracking.
-            </p>
-          </section>
+          <PrivacyExplainer />
 
           <section className="flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
