@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ProofHistory } from "@/components/proof/proof-history";
+import { TrustExplanation } from "@/components/proof/trust-explanation";
 import { PrivacyExplainer } from "@/components/shared/privacy-explainer";
 import { api } from "@/lib/api";
 
@@ -153,9 +154,16 @@ export function PublicProofResult({ slug }: { slug: string }) {
               <ProofData label="Signature" value={signature} />
             </section>
 
-            <ProofHistory projectSlug={data.project.slug} />
+            <TrustExplanation
+              status={getTrustStatus(proof)}
+              verifiedAt={timestamp === "Not available" ? undefined : timestamp}
+              verificationMethod="Confidential threshold proof"
+              verifiedWith={proof?.verifiedWith}
+            />
 
             <PrivacyExplainer />
+
+            <ProofHistory projectSlug={data.project.slug} />
           </div>
         ) : null}
       </section>
@@ -185,6 +193,20 @@ function getOutcome(proof: PublicProofResponse["proofResult"] | undefined) {
   const outcome = proof?.outcome ?? proof?.status ?? proof?.receipt?.proof?.status;
 
   return outcome === "FAIL" ? "FAIL" : "PASS";
+}
+
+function getTrustStatus(proof: PublicProofResponse["proofResult"] | undefined): "PASS" | "FAIL" | "PENDING" {
+  const outcome = proof?.outcome ?? proof?.status ?? proof?.receipt?.proof?.status;
+
+  if (outcome === "FAIL") {
+    return "FAIL";
+  }
+
+  if (outcome === "PASS") {
+    return "PASS";
+  }
+
+  return "PENDING";
 }
 
 function getTimestamp(proof: PublicProofResponse["proofResult"] | undefined) {
