@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ProofHistory } from "@/components/proof/proof-history";
 import { PrivacyExplainer } from "@/components/shared/privacy-explainer";
 import { api } from "@/lib/api";
 
@@ -151,6 +152,8 @@ export function PublicProofResult({ slug }: { slug: string }) {
               <ProofData label="Proof hash" value={proofHash} />
               <ProofData label="Signature" value={signature} />
             </section>
+
+            <ProofHistory projectSlug={data.project.slug} />
 
             <PrivacyExplainer />
           </div>

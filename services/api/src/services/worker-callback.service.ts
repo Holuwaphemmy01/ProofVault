@@ -95,3 +95,31 @@ export async function getLatestProofResultByProjectSlug(projectSlug: string) {
     orderBy: { submittedAt: "desc" },
   });
 }
+
+export async function getProofHistoryByProjectSlug(projectSlug: string) {
+  const results = await prisma.proofResult.findMany({
+    where: { projectSlug },
+    orderBy: { submittedAt: "desc" },
+    include: {
+      proofRequest: {
+        select: {
+          id: true,
+          onChainRequestId: true,
+          onChainTxHash: true,
+        },
+      },
+    },
+  });
+
+  return results.map((result) => ({
+    id: result.onChainResultId ?? result.id,
+    requestId: result.proofRequest.onChainRequestId ?? result.proofRequestId,
+    status: result.outcome,
+    thresholdMet: result.thresholdMet,
+    proofHash: result.proofHash,
+    transactionHash: result.transactionHash ?? result.proofRequest.onChainTxHash,
+    onChainResultId: result.onChainResultId,
+    onChainRequestId: result.proofRequest.onChainRequestId,
+    verifiedAt: (result.workerSignedAt ?? result.submittedAt).toISOString(),
+  }));
+}
