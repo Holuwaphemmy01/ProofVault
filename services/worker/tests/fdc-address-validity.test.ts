@@ -74,6 +74,7 @@ function mockedOptions(overrides: {
       },
       verification: {
         verifyAddressValidity: vi.fn(async () => overrides.verifyProof ?? true),
+        verifyPayment: vi.fn(async () => true),
       },
     },
     pollIntervalMs: 1,

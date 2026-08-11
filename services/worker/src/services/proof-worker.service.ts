@@ -11,6 +11,10 @@ import {
   requiresFdcAddressValidity,
   validateExternalAddress,
 } from "../integrations/fdc/address-validity.service.js";
+import {
+  hasPaymentEvidence,
+  verifyPaymentAttestation,
+} from "../integrations/fdc/payment-attestation.service.js";
 
 function toPrivatePayload(input: ProofJobInput): PrivateProofPayload {
   if (input.encryptedProofPayload) {
@@ -45,6 +49,7 @@ export async function processProofJob(input: ProofJobInput) {
     const workerSignedAt = Math.floor(Date.now() / 1000);
     const privatePayload = toPrivatePayload(input);
     const fdcValidationCount = await validateExternalWalletSources(privatePayload);
+    const fdcPaymentCount = await validatePaymentEvidence(privatePayload);
     const reserveResult = await calculatePrivateReserve({
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,
@@ -54,6 +59,7 @@ export async function processProofJob(input: ProofJobInput) {
       verifiedWith: [
         "MOCK_CONFIDENTIAL_COMPUTE",
         ...(fdcValidationCount > 0 ? ["FDC_ADDRESS_VALIDITY"] : []),
+        ...(fdcPaymentCount > 0 ? ["FDC_PAYMENT"] : []),
       ],
     });
     const signature = await signProofResult({
@@ -132,4 +138,19 @@ async function validateExternalWalletSources(privatePayload: PrivateProofPayload
   }
 
   return validatedCount;
+}
+
+async function validatePaymentEvidence(privatePayload: PrivateProofPayload) {
+  let verifiedCount = 0;
+
+  for (const wallet of privatePayload.wallets) {
+    if (!hasPaymentEvidence(wallet.paymentEvidence)) {
+      continue;
+    }
+
+    await verifyPaymentAttestation(wallet.paymentEvidence);
+    verifiedCount += 1;
+  }
+
+  return verifiedCount;
 }

@@ -9,6 +9,12 @@ export const privateWalletPayloadSchema = z.object({
   chain: z.string().min(1),
   walletAddress: z.string().min(1),
   sourceLabel: z.string().min(1).optional(),
+  paymentEvidence: z.object({
+    chain: z.literal("XRP").default("XRP"),
+    transactionId: z.string().min(1),
+    expectedDestination: z.string().min(1).optional(),
+    expectedReference: z.string().min(1).optional(),
+  }).optional(),
   privateMetadata: z.record(z.string(), z.unknown()).optional(),
 });
 

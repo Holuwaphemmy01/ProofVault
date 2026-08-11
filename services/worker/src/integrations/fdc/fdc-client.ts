@@ -4,6 +4,7 @@ import type {
   AddressValidityProof,
   FdcDaProofResponse,
   FdcSourceConfig,
+  PaymentProof,
   PreparedFdcRequest,
 } from "./fdc.types.js";
 
@@ -17,10 +18,13 @@ const systemsAbi = [
 const relayAbi = ["function isFinalized(uint256 _protocolId, uint256 _votingRoundId) external view returns (bool)"] as const;
 const verificationAbi = [
   "function verifyAddressValidity((bytes32[] merkleProof,(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,(string addressStr) requestBody,(bool isValid,string standardAddress,bytes32 standardAddressHash) responseBody) data) _proof) external view returns (bool)",
+  "function verifyPayment((bytes32[] merkleProof,(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,(bytes32 transactionId,uint256 inUtxo,uint256 utxo) requestBody,(uint64 blockNumber,uint64 blockTimestamp,bytes32 sourceAddressHash,bytes32 sourceAddressesRoot,bytes32 receivingAddressHash,bytes32 intendedReceivingAddressHash,int256 spentAmount,int256 intendedSpentAmount,int256 receivedAmount,int256 intendedReceivedAmount,bytes32 standardPaymentReference,bool oneToOne,uint8 status) responseBody) data) _proof) external view returns (bool)",
 ] as const;
 
 const addressValidityResponseType =
   "tuple(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,tuple(string addressStr) requestBody,tuple(bool isValid,string standardAddress,bytes32 standardAddressHash) responseBody)";
+const paymentResponseType =
+  "tuple(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,tuple(bytes32 transactionId,uint256 inUtxo,uint256 utxo) requestBody,tuple(uint64 blockNumber,uint64 blockTimestamp,bytes32 sourceAddressHash,bytes32 sourceAddressesRoot,bytes32 receivingAddressHash,bytes32 intendedReceivingAddressHash,int256 spentAmount,int256 intendedSpentAmount,int256 receivedAmount,int256 intendedReceivedAmount,bytes32 standardPaymentReference,bool oneToOne,uint8 status) responseBody)";
 
 type FdcContracts = NonNullable<FdcClientOptions["contracts"]>;
 
@@ -39,7 +43,10 @@ export type FdcClientOptions = {
       votingEpochDurationSeconds(): Promise<bigint>;
     };
     relay: { isFinalized(protocolId: number, roundId: number): Promise<boolean> };
-    verification: { verifyAddressValidity(proof: AddressValidityProof): Promise<boolean> };
+    verification: {
+      verifyAddressValidity(proof: AddressValidityProof): Promise<boolean>;
+      verifyPayment(proof: PaymentProof): Promise<boolean>;
+    };
   }>;
   provider?: Pick<JsonRpcProvider, "getBlock">;
   pollIntervalMs?: number;
@@ -76,18 +83,51 @@ export class FdcClient {
   }
 
   async prepareAddressValidityRequest(config: FdcSourceConfig, address: string): Promise<PreparedFdcRequest> {
-    const response = await this.fetchFn(`${this.verifierUrl}verifier/${config.verifierPath}/AddressValidity/prepareRequest`, {
+    return this.prepareAttestationRequest({
+      verifierPath: config.verifierPath,
+      attestationType: "AddressValidity",
+      sourceId: config.sourceId,
+      requestBody: {
+        addressStr: address,
+      },
+    });
+  }
+
+  async preparePaymentRequest(input: {
+    verifierPath: string;
+    sourceId: "testXRP";
+    transactionId: string;
+    inUtxo?: string;
+    utxo?: string;
+  }): Promise<PreparedFdcRequest> {
+    return this.prepareAttestationRequest({
+      verifierPath: input.verifierPath,
+      attestationType: "Payment",
+      sourceId: input.sourceId,
+      requestBody: {
+        transactionId: input.transactionId,
+        inUtxo: input.inUtxo ?? "0",
+        utxo: input.utxo ?? "0",
+      },
+    });
+  }
+
+  private async prepareAttestationRequest(input: {
+    verifierPath: string;
+    attestationType: "AddressValidity" | "Payment";
+    sourceId: string;
+    requestBody: Record<string, unknown>;
+  }): Promise<PreparedFdcRequest> {
+    const response = await this.fetchFn(`${this.verifierUrl}verifier/${input.verifierPath}/${input.attestationType}/prepareRequest`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(this.apiKey ? { "X-API-KEY": this.apiKey } : {}),
       },
       body: JSON.stringify({
-        attestationType: toUtf8HexString("AddressValidity"),
-        sourceId: toUtf8HexString(config.sourceId),
-        requestBody: {
-          addressStr: address,
-        },
+        attestationType: toUtf8HexString(input.attestationType),
+        sourceId: toUtf8HexString(input.sourceId),
+        requestBody: input.requestBody,
       }),
     });
 
@@ -207,6 +247,52 @@ export class FdcClient {
   async verifyAddressValidityProof(proof: AddressValidityProof) {
     const verification = await this.getVerification();
     return Boolean(await verification.verifyAddressValidity(proof));
+  }
+
+  decodePaymentProof(proof: FdcDaProofResponse): PaymentProof {
+    const responseHex = proof.response_hex ?? proof.responseHex;
+    const merkleProof = proof.proof ?? proof.proofs ?? [];
+
+    if (!isHex(responseHex)) {
+      throw new Error("FDC DA layer returned malformed Payment response");
+    }
+
+    const [decoded] = AbiCoder.defaultAbiCoder().decode([paymentResponseType], responseHex);
+
+    return {
+      merkleProof,
+      data: {
+        attestationType: decoded.attestationType,
+        sourceId: decoded.sourceId,
+        votingRound: BigInt(decoded.votingRound),
+        lowestUsedTimestamp: BigInt(decoded.lowestUsedTimestamp),
+        requestBody: {
+          transactionId: decoded.requestBody.transactionId,
+          inUtxo: BigInt(decoded.requestBody.inUtxo),
+          utxo: BigInt(decoded.requestBody.utxo),
+        },
+        responseBody: {
+          blockNumber: BigInt(decoded.responseBody.blockNumber),
+          blockTimestamp: BigInt(decoded.responseBody.blockTimestamp),
+          sourceAddressHash: decoded.responseBody.sourceAddressHash,
+          sourceAddressesRoot: decoded.responseBody.sourceAddressesRoot,
+          receivingAddressHash: decoded.responseBody.receivingAddressHash,
+          intendedReceivingAddressHash: decoded.responseBody.intendedReceivingAddressHash,
+          spentAmount: BigInt(decoded.responseBody.spentAmount),
+          intendedSpentAmount: BigInt(decoded.responseBody.intendedSpentAmount),
+          receivedAmount: BigInt(decoded.responseBody.receivedAmount),
+          intendedReceivedAmount: BigInt(decoded.responseBody.intendedReceivedAmount),
+          standardPaymentReference: decoded.responseBody.standardPaymentReference,
+          oneToOne: Boolean(decoded.responseBody.oneToOne),
+          status: Number(decoded.responseBody.status),
+        },
+      },
+    };
+  }
+
+  async verifyPaymentProof(proof: PaymentProof) {
+    const verification = await this.getVerification();
+    return Boolean(await verification.verifyPayment(proof));
   }
 
   private async calculateRoundId(blockTimestamp: number) {
