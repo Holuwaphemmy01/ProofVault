@@ -11,3 +11,6 @@ process.env.FDC_VERIFIER_URL = "https://fdc.example/";
 process.env.FDC_DA_LAYER_URL = "https://da.example/";
 process.env.FDC_POLL_INTERVAL_MS = "1";
 process.env.FDC_MAX_WAIT_MS = "20";
+process.env.FCC_MODE = "local";
+process.env.FCC_FALLBACK_ENABLED = "true";
+process.env.FCC_TIMEOUT_MS = "100";

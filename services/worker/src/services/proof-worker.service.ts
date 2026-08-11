@@ -57,7 +57,6 @@ export async function processProofJob(input: ProofJobInput) {
       workerSignedAt,
       privatePayload,
       verifiedWith: [
-        "MOCK_CONFIDENTIAL_COMPUTE",
         ...(fdcValidationCount > 0 ? ["FDC_ADDRESS_VALIDITY"] : []),
         ...(fdcPaymentCount > 0 ? ["FDC_PAYMENT"] : []),
       ],

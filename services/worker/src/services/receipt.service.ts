@@ -34,7 +34,7 @@ export function generateProofReceipt(input: GenerateProofReceiptInput) {
     },
     verification: {
       method: "confidential_threshold_proof",
-      verifiedWith: input.verifiedWith ?? ["MOCK_CONFIDENTIAL_COMPUTE"],
+      verifiedWith: input.verifiedWith ?? [],
       worker: {
         signer: input.signerAddress,
         signature: input.signature,

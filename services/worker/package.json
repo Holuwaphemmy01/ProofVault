@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "ftso:test": "tsx scripts/test-ftso.ts",
     "fdc:address-validity:test": "tsx scripts/test-fdc-address-validity.ts",
-    "fdc:payment:test": "tsx scripts/test-fdc-payment.ts"
+    "fdc:payment:test": "tsx scripts/test-fdc-payment.ts",
+    "fcc:threshold:test": "tsx scripts/test-fcc-threshold.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

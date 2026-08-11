@@ -13,7 +13,7 @@ ProofVault is a confidential cross-chain proof-of-reserves platform built for Fl
 | FTSO | Real integration for 1-2 price feeds, starting with FLR/USD and BTC/USD. | Value reserve assets for threshold comparison. | Static demo prices only if live feed fails. |
 | FDC AddressValidity | Real AddressValidity attestation. | Validate submitted reserve addresses. | Labelled demo validation if live request or proof retrieval fails. |
 | FDC Payment | Real Payment attestation. | Verify external-chain payment evidence connected to reserves. | Labelled demo payment evidence if live attestation fails. |
-| FCC | Real minimal compute extension. | Calculate whether total reserve value meets required threshold. | Labelled local worker calculation if FCC setup fails during demo. |
+| FCC | Real minimal FCC threshold extension. | Calculate whether verified reserve values meet the required threshold. | Labelled local worker calculation only when explicitly enabled. |
 | ProofRegistry contract | Real contract write for public proof result. | Anchor the proof hash and status publicly. | Local/mock contract reference only if testnet transaction fails. |
 | Public verifier page | Real public display of proof result. | Show reserve status without private reserve composition. | Demo-mode public result clearly labelled if live services fail. |
 
@@ -59,23 +59,38 @@ The public page must not expose private treasury movement or exact reserve compo
 
 ## FCC Integration Plan
 
-ProofVault will use a real minimal FCC extension for the MVP. The extension receives:
+ProofVault uses a real minimal FCC threshold extension for the MVP:
+
+```text
+proofvault-threshold-extension
+```
+
+The extension action is:
+
+```text
+verifyReserveThreshold
+```
+
+The extension receives confidential inputs:
 
 - `requiredThreshold`
 - `assetValues`
+- `commitment`
+- `requestId`
 
 The extension computes:
 
-- `totalReserveValue`
+- `sum(assetValues) >= requiredThreshold`
 - `thresholdMet`
 
 The extension returns only:
 
 - `thresholdMet`
-- `proofHash`
+- `outcome`
+- `outputCommitment`
 - `timestamp`
 
-It must not return wallet-by-wallet balances or private reserve composition.
+It must not return wallet-by-wallet balances, exact asset values, aggregate reserve value, treasury strategy, or private reserve composition.
 
 ## ProofRegistry Contract Integration
 

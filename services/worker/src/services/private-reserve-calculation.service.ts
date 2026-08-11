@@ -8,6 +8,8 @@ import { getBalanceAdapter } from "../adapters/balance/adapter-factory.js";
 import { getPriceAdapter } from "../adapters/price/price-adapter.factory.js";
 import type { PriceAdapter } from "../adapters/price/price-adapter.interface.js";
 import type { ProofOutcome } from "../types/worker.types.js";
+import { verifyReserveThreshold } from "../integrations/fcc/fcc-threshold.service.js";
+import type { FccClient } from "../integrations/fcc/fcc-client.js";
 
 type CalculatePrivateReserveInput = {
   proofRequestId: string;
@@ -17,6 +19,9 @@ type CalculatePrivateReserveInput = {
   workerSignedAt: number;
   priceAdapter?: PriceAdapter;
   verifiedWith?: string[];
+  fccClient?: FccClient;
+  fccMode?: "live" | "local";
+  fccFallbackEnabled?: boolean;
 };
 
 export async function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
@@ -60,26 +65,35 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
 
     return balanceResult.balance * priceResult.price;
   }));
-  const totalReserveUSD = reserveValues.reduce((total, value) => total + value, 0);
-  const thresholdMet = totalReserveUSD >= privatePayload.requiredThreshold;
-  const outcome: ProofOutcome = thresholdMet ? "PASS" : "FAIL";
+  const thresholdResult = await verifyReserveThreshold({
+    requestId: input.proofRequestId,
+    requiredThreshold: privatePayload.requiredThreshold,
+    assetValues: reserveValues,
+    client: input.fccClient,
+    mode: input.fccMode,
+    fallbackEnabled: input.fccFallbackEnabled,
+    commitment: sha256Hex(canonicalJson({
+      proofRequestId: input.proofRequestId,
+      onChainRequestId: input.onChainRequestId,
+      projectSlug: input.projectSlug,
+      selectedAssets: privatePayload.selectedAssets,
+      workerSignedAt: input.workerSignedAt,
+    })),
+  });
+  const thresholdMet = thresholdResult.thresholdMet;
+  const outcome: ProofOutcome = thresholdResult.outcome;
   const verifiedWith = [
-    ...(input.verifiedWith ?? ["MOCK_CONFIDENTIAL_COMPUTE"]),
+    ...(input.verifiedWith ?? []),
     ...(priceSources.has("ftso") ? ["FTSO"] : []),
+    ...(thresholdResult.computeSource === "fcc" ? ["FCC"] : ["LOCAL_FALLBACK_COMPUTE"]),
   ];
-  const proofHash = sha256Hex(canonicalJson({
-    proofRequestId: input.proofRequestId,
-    onChainRequestId: input.onChainRequestId,
-    projectSlug: input.projectSlug,
-    selectedAssets: privatePayload.selectedAssets,
-    thresholdMet,
-    outcome,
-    workerSignedAt: input.workerSignedAt,
-  }));
+  const proofHash = thresholdResult.outputCommitment;
   const resultMetadataHash = sha256Hex(canonicalJson({
     status: outcome,
     thresholdMet,
     verifiedWith,
+    computeSource: thresholdResult.computeSource,
+    executionReference: thresholdResult.executionReference,
     privacyMode: "confidential_threshold_proof",
   }));
 
@@ -89,5 +103,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
     proofHash,
     resultMetadataHash,
     verifiedWith,
+    computeSource: thresholdResult.computeSource,
+    executionReference: thresholdResult.executionReference,
   };
 }

@@ -24,6 +24,11 @@ const envSchema = z.object({
   FDC_CONTRACT_REGISTRY_ADDRESS: z.string().default("0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019"),
   FDC_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(10000),
   FDC_MAX_WAIT_MS: z.coerce.number().int().positive().default(240000),
+  FCC_MODE: z.enum(["live", "local"]).default("live"),
+  FCC_EXTENSION_ENDPOINT: z.string().default(""),
+  FCC_EXTENSION_ID: z.string().default(""),
+  FCC_FALLBACK_ENABLED: z.coerce.boolean().default(false),
+  FCC_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 });
 
 export const env = envSchema.parse({
@@ -47,4 +52,9 @@ export const env = envSchema.parse({
   FDC_CONTRACT_REGISTRY_ADDRESS: process.env.FDC_CONTRACT_REGISTRY_ADDRESS,
   FDC_POLL_INTERVAL_MS: process.env.FDC_POLL_INTERVAL_MS,
   FDC_MAX_WAIT_MS: process.env.FDC_MAX_WAIT_MS,
+  FCC_MODE: process.env.FCC_MODE,
+  FCC_EXTENSION_ENDPOINT: process.env.FCC_EXTENSION_ENDPOINT,
+  FCC_EXTENSION_ID: process.env.FCC_EXTENSION_ID,
+  FCC_FALLBACK_ENABLED: process.env.FCC_FALLBACK_ENABLED,
+  FCC_TIMEOUT_MS: process.env.FCC_TIMEOUT_MS,
 });
