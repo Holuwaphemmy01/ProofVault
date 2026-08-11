@@ -3,7 +3,6 @@ import type { PrivateProofPayload } from "@proofvault/proof-payload";
 import { createJob, updateJob } from "../lib/in-memory-job-store.js";
 import { env } from "../lib/env.js";
 import { sendWorkerCallback } from "./callback.service.js";
-import { decryptProofPayload } from "./payload-decryption.service.js";
 import { calculatePrivateReserve } from "./private-reserve-calculation.service.js";
 import { generateProofReceipt } from "./receipt.service.js";
 import { signProofResult } from "./signature.service.js";
@@ -15,28 +14,8 @@ import {
   hasPaymentEvidence,
   verifyPaymentAttestation,
 } from "../integrations/fdc/payment-attestation.service.js";
-
-function toPrivatePayload(input: ProofJobInput): PrivateProofPayload {
-  if (input.encryptedProofPayload) {
-    return decryptProofPayload(input.encryptedProofPayload);
-  }
-
-  return {
-    projectSlug: input.projectSlug,
-    proofName: "Legacy Mock Proof Job",
-    requiredThreshold: input.requiredThreshold ?? 0,
-    thresholdCurrency: input.thresholdCurrency,
-    selectedAssets: input.selectedAssets ?? [],
-    wallets: (input.walletReferences ?? []).map((reference) => ({
-      assetSymbol: reference.assetSymbol,
-      chain: reference.chain,
-      walletAddress: reference.walletAddressHash,
-      sourceLabel: undefined,
-    })),
-    privateSalt: "legacy-mock-salt",
-    createdAt: new Date().toISOString(),
-  };
-}
+import { getConfidentialInputService } from "../confidential-input/confidential-input.factory.js";
+import type { ProofComputationResult } from "../confidential-input/confidential-input.interface.js";
 
 export async function processProofJob(input: ProofJobInput) {
   const job = createJob(input);
@@ -47,20 +26,34 @@ export async function processProofJob(input: ProofJobInput) {
     });
 
     const workerSignedAt = Math.floor(Date.now() / 1000);
-    const privatePayload = toPrivatePayload(input);
-    const fdcValidationCount = await validateExternalWalletSources(privatePayload);
-    const fdcPaymentCount = await validatePaymentEvidence(privatePayload);
-    const reserveResult = await calculatePrivateReserve({
-      proofRequestId: input.proofRequestId,
-      onChainRequestId: input.onChainRequestId,
-      projectSlug: input.projectSlug,
+    const confidentialInput = await getConfidentialInputService().resolve(input, {
       workerSignedAt,
-      privatePayload,
-      verifiedWith: [
-        ...(fdcValidationCount > 0 ? ["FDC_ADDRESS_VALIDITY"] : []),
-        ...(fdcPaymentCount > 0 ? ["FDC_PAYMENT"] : []),
-      ],
+      verifiedWith: [],
     });
+    let reserveResult: ProofComputationResult;
+    let receiptProjectName = input.projectName ?? input.projectSlug;
+
+    if (confidentialInput.mode === "local-dev") {
+      const privatePayload = confidentialInput.privatePayload;
+      const fdcValidationCount = await validateExternalWalletSources(privatePayload);
+      const fdcPaymentCount = await validatePaymentEvidence(privatePayload);
+
+      receiptProjectName = input.projectName ?? privatePayload.projectSlug;
+      reserveResult = await calculatePrivateReserve({
+        proofRequestId: input.proofRequestId,
+        onChainRequestId: input.onChainRequestId,
+        projectSlug: input.projectSlug,
+        workerSignedAt,
+        privatePayload,
+        verifiedWith: [
+          ...(fdcValidationCount > 0 ? ["FDC_ADDRESS_VALIDITY"] : []),
+          ...(fdcPaymentCount > 0 ? ["FDC_PAYMENT"] : []),
+        ],
+      });
+    } else {
+      reserveResult = confidentialInput.reserveResult;
+    }
+
     const signature = await signProofResult({
       registryAddress: env.PROOFVAULT_REGISTRY_ADDRESS,
       chainId: env.CHAIN_ID,
@@ -71,7 +64,7 @@ export async function processProofJob(input: ProofJobInput) {
       workerSignedAt,
     });
     const receipt = generateProofReceipt({
-      projectName: input.projectName ?? privatePayload.projectSlug,
+      projectName: receiptProjectName,
       projectSlug: input.projectSlug,
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,

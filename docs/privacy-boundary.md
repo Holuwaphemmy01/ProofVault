@@ -52,6 +52,8 @@ Encrypted data is sensitive input or evidence that should be protected before st
 - Worker input bundle
 - Private reserve metadata
 
+Live FCC mode treats encrypted proof payloads as confidential FCC inputs. The backend stores only the encrypted/confidential payload, payload hash, commitment, and safe key or extension reference when required. It must not decrypt or persist plaintext reserve data.
+
 ### Worker-Only Data
 
 Worker-only data exists inside the confidential verification worker during proof processing. It should not be returned to the frontend, written on-chain, or included in public API responses.
@@ -139,7 +141,8 @@ It must not show wallet-level data, raw reserve calculations, exact reserve comp
 
 For the hackathon MVP:
 
-- The worker may simulate confidential verification.
+- The primary live/demo mode should use the FCC confidential input path.
+- The local worker RSA decryption path is kept only for `CONFIDENTIAL_INPUT_MODE=local-dev` tests and development.
 - Sensitive values should still be treated as private in the UI and docs.
 - The public result should only show safe proof data.
 - Mock data must still follow the privacy boundary.

@@ -78,6 +78,8 @@ The extension receives confidential inputs:
 - `commitment`
 - `requestId`
 
+In live/demo mode, ProofVault uses `CONFIDENTIAL_INPUT_MODE=fcc`. The encrypted proof payload is treated as an opaque confidential input package for the FCC extension, and the ordinary backend/API/worker process must not decrypt or persist plaintext reserve data.
+
 The extension computes:
 
 - `sum(assetValues) >= requiredThreshold`
@@ -91,6 +93,8 @@ The extension returns only:
 - `timestamp`
 
 It must not return wallet-by-wallet balances, exact asset values, aggregate reserve value, treasury strategy, or private reserve composition.
+
+The previous RSA-OAEP/AES-GCM worker decryption path is retained only for `CONFIDENTIAL_INPUT_MODE=local-dev` tests and local development. It is not described as an FCC or TEE guarantee.
 
 ## ProofRegistry Contract Integration
 
@@ -130,6 +134,8 @@ Do not store:
 Fallback data is only used if live testnet services fail. The primary demo path must use real Flare integrations.
 
 Fallback mode must be clearly labelled in code or demo mode, and fallback values must still respect ProofVault privacy boundaries. Demo data must not expose full wallet addresses, exact balances, private reserve composition, treasury strategy, or raw worker output.
+
+Confidential input fallback is stricter: the local worker RSA private key path is allowed only in `local-dev` mode. Live FCC mode does not require `WORKER_ENCRYPTION_PRIVATE_KEY`.
 
 ## Risks and Mitigations
 

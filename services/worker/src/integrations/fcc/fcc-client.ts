@@ -1,5 +1,6 @@
 import { env } from "../../lib/env.js";
 import type { ProofOutcome } from "../../types/worker.types.js";
+import type { EncryptedProofPayload } from "@proofvault/proof-payload";
 
 export type FccThresholdRequest = {
   requestId: string;
@@ -15,6 +16,17 @@ export type FccThresholdResponse = {
   timestamp?: number;
   executionReference?: string;
   extensionId?: string;
+};
+
+export type FccConfidentialProofRequest = {
+  proofRequestId: string;
+  onChainRequestId: string;
+  projectSlug: string;
+  encryptedPayload: EncryptedProofPayload;
+  payloadHash: string;
+  thresholdCommitment?: string;
+  selectedAssetsHash?: string;
+  workerSignedAt: number;
 };
 
 type FccClientOptions = {
@@ -42,6 +54,34 @@ export class FccClient {
   }
 
   async verifyReserveThreshold(input: FccThresholdRequest): Promise<FccThresholdResponse> {
+    return this.postAction("VERIFY_RESERVE_THRESHOLD", "verifyReserveThreshold", input);
+  }
+
+  async executeConfidentialProof(input: FccConfidentialProofRequest): Promise<FccThresholdResponse> {
+    return this.postAction("VERIFY_CONFIDENTIAL_PROOF", "verifyReserveThreshold", {
+      proofRequestId: input.proofRequestId,
+      onChainRequestId: input.onChainRequestId,
+      projectSlug: input.projectSlug,
+      confidentialInput: {
+        version: input.encryptedPayload.version,
+        algorithm: input.encryptedPayload.algorithm,
+        keyId: input.encryptedPayload.keyId,
+        ciphertext: input.encryptedPayload.ciphertext,
+        encryptedKey: input.encryptedPayload.encryptedKey,
+        iv: input.encryptedPayload.iv,
+        authTag: input.encryptedPayload.authTag,
+        aad: input.encryptedPayload.aad,
+        payloadHash: input.payloadHash,
+      },
+      commitments: {
+        thresholdCommitment: input.thresholdCommitment,
+        selectedAssetsHash: input.selectedAssetsHash,
+      },
+      workerSignedAt: input.workerSignedAt,
+    });
+  }
+
+  private async postAction(opCommand: string, action: string, input: unknown): Promise<FccThresholdResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -55,8 +95,8 @@ export class FccClient {
         body: JSON.stringify({
           extensionId: this.extensionId || undefined,
           opType: "PROOFVAULT_RESERVE",
-          opCommand: "VERIFY_RESERVE_THRESHOLD",
-          action: "verifyReserveThreshold",
+          opCommand,
+          action,
           input,
         }),
       });
