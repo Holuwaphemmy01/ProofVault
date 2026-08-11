@@ -16,6 +16,7 @@ type CalculatePrivateReserveInput = {
   privatePayload: PrivateProofPayload;
   workerSignedAt: number;
   priceAdapter?: PriceAdapter;
+  verifiedWith?: string[];
 };
 
 export async function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
@@ -63,7 +64,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
   const thresholdMet = totalReserveUSD >= privatePayload.requiredThreshold;
   const outcome: ProofOutcome = thresholdMet ? "PASS" : "FAIL";
   const verifiedWith = [
-    "MOCK_CONFIDENTIAL_COMPUTE",
+    ...(input.verifiedWith ?? ["MOCK_CONFIDENTIAL_COMPUTE"]),
     ...(priceSources.has("ftso") ? ["FTSO"] : []),
   ];
   const proofHash = sha256Hex(canonicalJson({

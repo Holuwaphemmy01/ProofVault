@@ -18,6 +18,12 @@ const envSchema = z.object({
   COSTON2_RPC_URL: z.string().default(""),
   FTSO_PRICE_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   FTSOV2_ADDRESS: z.string().default("0x3d893C53D9e8056135C26C8c638B76C8b60Df726"),
+  FDC_VERIFIER_URL: z.string().default("https://fdc-verifiers-testnet.flare.network/"),
+  FDC_DA_LAYER_URL: z.string().default("https://ctn2-data-availability.flare.network/"),
+  FDC_API_KEY: z.string().default(""),
+  FDC_CONTRACT_REGISTRY_ADDRESS: z.string().default("0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019"),
+  FDC_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(10000),
+  FDC_MAX_WAIT_MS: z.coerce.number().int().positive().default(240000),
 });
 
 export const env = envSchema.parse({
@@ -35,4 +41,10 @@ export const env = envSchema.parse({
   COSTON2_RPC_URL: process.env.COSTON2_RPC_URL,
   FTSO_PRICE_TIMEOUT_MS: process.env.FTSO_PRICE_TIMEOUT_MS,
   FTSOV2_ADDRESS: process.env.FTSOV2_ADDRESS,
+  FDC_VERIFIER_URL: process.env.FDC_VERIFIER_URL,
+  FDC_DA_LAYER_URL: process.env.FDC_DA_LAYER_URL,
+  FDC_API_KEY: process.env.FDC_API_KEY,
+  FDC_CONTRACT_REGISTRY_ADDRESS: process.env.FDC_CONTRACT_REGISTRY_ADDRESS,
+  FDC_POLL_INTERVAL_MS: process.env.FDC_POLL_INTERVAL_MS,
+  FDC_MAX_WAIT_MS: process.env.FDC_MAX_WAIT_MS,
 });
