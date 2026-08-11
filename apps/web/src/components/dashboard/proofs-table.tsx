@@ -17,7 +17,7 @@ const rows: {
     threshold: "$1,000,000",
     status: "Passed",
     updated: "2 mins ago",
-    hash: "0x92A7...F13C",
+    hash: "0x8f42...19ad",
   },
   {
     id: "PV-2400",

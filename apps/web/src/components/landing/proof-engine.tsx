@@ -99,7 +99,7 @@ export function ProofEngine() {
               <Row label="Threshold" value="Met" valueClass="text-green" />
               <Row
                 label="Proof hash"
-                value="0x92A7...F13C"
+                value="0x8f42...19ad"
                 mono
                 icon={<Hash className="h-3 w-3 text-subtle" />}
               />

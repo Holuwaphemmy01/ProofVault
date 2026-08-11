@@ -54,7 +54,7 @@ export function VerificationPreview() {
                   ))}
                 </div>
               </div>
-              <Field label="Proof Hash" value="0x92A7...F13C" mono />
+              <Field label="Proof Hash" value="0x8f42...19ad" mono />
               <Field label="Timestamp" value="21 July 2026, 14:32 UTC" />
               <Field
                 label="Verification Mode"

@@ -3,8 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-
-const MOCK_WALLET_ADDRESS = "0x92A7F13C00000000000000000000000000000000";
+import { ConnectWalletButton, useWallet } from "@/components/wallet";
+import { buildProjectRegistrationPayload } from "@/lib/project-registration";
 
 type ProjectType = "exchange" | "defi" | "protocol";
 
@@ -26,8 +26,8 @@ const initialFormState: FormState = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const wallet = useWallet();
   const [form, setForm] = useState<FormState>(initialFormState);
-  const [ownerWallet, setOwnerWallet] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -41,18 +41,20 @@ export default function OnboardingPage() {
     setError("");
     setSuccess("");
 
-    if (!ownerWallet) {
+    if (!wallet.address) {
       setError("Connect a wallet before registering your project.");
+      return;
+    }
+
+    if (!wallet.isCoston2) {
+      setError("Switch to Flare Coston2 before registering your project.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await api.post("/projects", {
-        ...form,
-        ownerWallet,
-      });
+      await api.post("/projects", buildProjectRegistrationPayload(form, wallet.address));
 
       setSuccess("Project registered successfully. Redirecting to dashboard...");
       window.setTimeout(() => router.push("/dashboard"), 700);
@@ -138,16 +140,16 @@ export default function OnboardingPage() {
               <div>
                 <p className="text-sm font-medium text-foreground">Wallet Address</p>
                 <p className="mt-1 font-mono text-sm text-muted-foreground">
-                  {ownerWallet || "No wallet connected"}
+                  {wallet.maskedAddress || "No wallet connected"}
                 </p>
+                {wallet.chainId ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Chain ID: {wallet.chainId}{wallet.isCoston2 ? " - Flare Coston2" : ""}
+                  </p>
+                ) : null}
+                {wallet.error ? <p className="mt-2 text-xs text-red">{wallet.error}</p> : null}
               </div>
-              <button
-                type="button"
-                onClick={() => setOwnerWallet(MOCK_WALLET_ADDRESS)}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                {ownerWallet ? "Wallet Connected" : "Connect Wallet"}
-              </button>
+              <ConnectWalletButton />
             </div>
           </div>
 
@@ -156,7 +158,7 @@ export default function OnboardingPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !wallet.address || !wallet.isCoston2}
             className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Registering..." : "Register Project"}

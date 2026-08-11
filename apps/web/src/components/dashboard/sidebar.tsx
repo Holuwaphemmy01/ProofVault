@@ -52,10 +52,10 @@ export function Sidebar({ activeItem = "Overview" }: { activeItem?: string }) {
             Organization
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground">AtlasX Exchange</p>
-          <p className="mt-3 font-mono text-xs text-muted-foreground">0x92A7...F13C</p>
+          <p className="mt-3 text-xs text-muted-foreground">Owner wallet connects in onboarding</p>
           <div className="mt-3 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-green" />
-            <span className="text-xs font-medium text-green">Connected</span>
+            <span className="text-xs font-medium text-green">Ready</span>
           </div>
         </div>
       </div>
