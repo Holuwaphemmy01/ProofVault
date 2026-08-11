@@ -13,6 +13,11 @@ const envSchema = z.object({
   PROOFVAULT_REGISTRY_ADDRESS: z.string().default(""),
   CHAIN_ID: z.coerce.number().int().positive().default(31337),
   MOCK_CONFIDENTIAL_COMPUTE: z.coerce.boolean().default(true),
+  FTSO_NETWORK: z.string().default("coston2"),
+  FTSO_FALLBACK_ENABLED: z.coerce.boolean().default(false),
+  COSTON2_RPC_URL: z.string().default(""),
+  FTSO_PRICE_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  FTSOV2_ADDRESS: z.string().default("0x3d893C53D9e8056135C26C8c638B76C8b60Df726"),
 });
 
 export const env = envSchema.parse({
@@ -25,4 +30,9 @@ export const env = envSchema.parse({
   PROOFVAULT_REGISTRY_ADDRESS: process.env.PROOFVAULT_REGISTRY_ADDRESS,
   CHAIN_ID: process.env.CHAIN_ID,
   MOCK_CONFIDENTIAL_COMPUTE: process.env.MOCK_CONFIDENTIAL_COMPUTE,
+  FTSO_NETWORK: process.env.FTSO_NETWORK,
+  FTSO_FALLBACK_ENABLED: process.env.FTSO_FALLBACK_ENABLED,
+  COSTON2_RPC_URL: process.env.COSTON2_RPC_URL,
+  FTSO_PRICE_TIMEOUT_MS: process.env.FTSO_PRICE_TIMEOUT_MS,
+  FTSOV2_ADDRESS: process.env.FTSOV2_ADDRESS,
 });

@@ -6,12 +6,14 @@ import type {
 import { getBaseAssetSymbol } from "@proofvault/config";
 
 export class MockPriceAdapter implements PriceAdapter {
+  constructor(private readonly source: "mock" | "mock-fallback" = "mock") {}
+
   async getPrice(request: PriceRequest): Promise<PriceResult> {
     return {
       assetSymbol: request.assetSymbol,
       price: this.getMockUsdPrice(request.assetSymbol),
       currency: "USD",
-      source: "mock",
+      source: this.source,
     };
   }
 

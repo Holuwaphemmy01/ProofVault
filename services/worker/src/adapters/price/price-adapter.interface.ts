@@ -6,7 +6,10 @@ export interface PriceResult {
   assetSymbol: string;
   price: number;
   currency: "USD";
-  source: "mock" | "ftso";
+  source: "mock" | "mock-fallback" | "ftso";
+  timestamp?: number;
+  decimals?: number;
+  feedId?: string;
 }
 
 export interface PriceAdapter {

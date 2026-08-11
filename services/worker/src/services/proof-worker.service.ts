@@ -71,6 +71,7 @@ export async function processProofJob(input: ProofJobInput) {
       encryptedPayloadHash: input.encryptedPayloadHash ?? input.encryptedProofPayload?.payloadHash,
       signerAddress: signature.signerAddress,
       signature: signature.signature,
+      verifiedWith: reserveResult.verifiedWith,
     });
     const callback = await sendWorkerCallback({
       proofRequestId: input.proofRequestId,

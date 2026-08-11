@@ -15,6 +15,7 @@ type GenerateProofReceiptInput = {
   encryptedPayloadHash?: string;
   signerAddress: string;
   signature: string;
+  verifiedWith?: string[];
 };
 
 export function generateProofReceipt(input: GenerateProofReceiptInput) {
@@ -33,7 +34,7 @@ export function generateProofReceipt(input: GenerateProofReceiptInput) {
     },
     verification: {
       method: "confidential_threshold_proof",
-      verifiedWith: ["MOCK_CONFIDENTIAL_COMPUTE"],
+      verifiedWith: input.verifiedWith ?? ["MOCK_CONFIDENTIAL_COMPUTE"],
       worker: {
         signer: input.signerAddress,
         signature: input.signature,

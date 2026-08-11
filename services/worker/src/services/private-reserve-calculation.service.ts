@@ -6,6 +6,7 @@ import {
 import { isSupportedAsset } from "@proofvault/config";
 import { getBalanceAdapter } from "../adapters/balance/adapter-factory.js";
 import { getPriceAdapter } from "../adapters/price/price-adapter.factory.js";
+import type { PriceAdapter } from "../adapters/price/price-adapter.interface.js";
 import type { ProofOutcome } from "../types/worker.types.js";
 
 type CalculatePrivateReserveInput = {
@@ -14,6 +15,7 @@ type CalculatePrivateReserveInput = {
   projectSlug: string;
   privatePayload: PrivateProofPayload;
   workerSignedAt: number;
+  priceAdapter?: PriceAdapter;
 };
 
 export async function calculatePrivateReserve(input: CalculatePrivateReserveInput) {
@@ -39,9 +41,10 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
     }
   }
 
+  const priceAdapter = input.priceAdapter ?? getPriceAdapter();
+  const priceSources = new Set<string>();
   const reserveValues = await Promise.all(privatePayload.wallets.map(async (wallet) => {
     const adapter = getBalanceAdapter(wallet.chain);
-    const priceAdapter = getPriceAdapter();
     const [balanceResult, priceResult] = await Promise.all([
       adapter.getBalance({
         chain: wallet.chain,
@@ -52,13 +55,17 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
         assetSymbol: wallet.assetSymbol,
       }),
     ]);
+    priceSources.add(priceResult.source);
 
     return balanceResult.balance * priceResult.price;
   }));
   const totalReserveUSD = reserveValues.reduce((total, value) => total + value, 0);
   const thresholdMet = totalReserveUSD >= privatePayload.requiredThreshold;
   const outcome: ProofOutcome = thresholdMet ? "PASS" : "FAIL";
-  const verifiedWith = ["MOCK_CONFIDENTIAL_COMPUTE"];
+  const verifiedWith = [
+    "MOCK_CONFIDENTIAL_COMPUTE",
+    ...(priceSources.has("ftso") ? ["FTSO"] : []),
+  ];
   const proofHash = sha256Hex(canonicalJson({
     proofRequestId: input.proofRequestId,
     onChainRequestId: input.onChainRequestId,
