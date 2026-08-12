@@ -2,6 +2,7 @@ export interface BalanceRequest {
   chain: string;
   assetSymbol: string;
   walletAddressHash: string;
+  walletAddress?: string;
 }
 
 export interface BalanceResult {

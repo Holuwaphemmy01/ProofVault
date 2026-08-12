@@ -50,12 +50,13 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
   const priceAdapter = input.priceAdapter ?? getPriceAdapter();
   const priceSources = new Set<string>();
   const reserveValues = await Promise.all(privatePayload.wallets.map(async (wallet) => {
-    const adapter = getBalanceAdapter(wallet.chain);
+    const adapter = getBalanceAdapter(wallet.chain, wallet.assetSymbol);
     const [balanceResult, priceResult] = await Promise.all([
       adapter.getBalance({
         chain: wallet.chain,
         assetSymbol: wallet.assetSymbol,
         walletAddressHash: sha256Hex(wallet.walletAddress),
+        walletAddress: wallet.walletAddress,
       }),
       priceAdapter.getPrice({
         assetSymbol: wallet.assetSymbol,

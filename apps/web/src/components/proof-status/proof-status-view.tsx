@@ -57,7 +57,7 @@ export function ProofStatusView({ proofId }: { proofId: string }) {
   const status = useMemo(() => getLifecycleStatus(proofRequest), [proofRequest]);
   const selectedAssets = Array.isArray(proofRequest?.selectedAssets)
     ? (proofRequest.selectedAssets as string[])
-    : ["FXRP", "FBTC"];
+    : ["FXRP", "FLR"];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 lg:px-8">

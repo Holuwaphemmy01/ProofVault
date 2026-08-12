@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const assets = ["FBTC", "FXRP", "FDOGE", "FLR", "USDX"];
+export const assets = ["FXRP", "FLR", "USDT0", "XRP", "BTC"];
 
 export const proofs = [
   {
@@ -8,7 +8,7 @@ export const proofs = [
     slug: "atlasx-exchange",
     status: "PASS",
     threshold: "$1.2M",
-    assets: ["FBTC", "FXRP", "FLR"],
+    assets: ["FXRP", "FLR"],
     hash: "0x8f42...19ad",
     updated: "2 minutes ago",
   },
@@ -17,7 +17,7 @@ export const proofs = [
     slug: "riverdao",
     status: "VERIFYING",
     threshold: "$850K",
-    assets: ["FXRP", "USDX"],
+    assets: ["FXRP", "USDT0"],
     hash: "pending",
     updated: "running",
   },
@@ -26,7 +26,7 @@ export const proofs = [
     slug: "bridgemint",
     status: "PASS",
     threshold: "$3.5M",
-    assets: ["FBTC", "FDOGE", "USDX"],
+    assets: ["FXRP", "USDT0"],
     hash: "0xa31b...f820",
     updated: "18 minutes ago",
   },
@@ -118,11 +118,11 @@ export function AssetRail({ selected = assets }: { selected?: string[] }) {
 
 export function ReserveVisual() {
   const rings = [
-    ["FBTC", "h-32", "bg-blue-400"],
+    ["FXRP", "h-32", "bg-blue-400"],
     ["FXRP", "h-24", "bg-violet-400"],
-    ["FDOGE", "h-20", "bg-cyan-300"],
+    ["USDT0", "h-20", "bg-cyan-300"],
     ["FLR", "h-28", "bg-indigo-300"],
-    ["USDX", "h-16", "bg-sky-200"],
+    ["BTC", "h-16", "bg-sky-200"],
   ];
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { PrivacyExplainer } from "@/components/shared/privacy-explainer";
@@ -11,7 +11,17 @@ const projects = [
   { name: "RiverDAO Treasury", slug: "riverdao" },
 ];
 
-const supportedAssets = ["FXRP", "FBTC", "FDOGE", "FLR"];
+type AssetMetadata = {
+  symbol: string;
+  displayName: string;
+  type: string;
+  baseAsset: string;
+  network: string;
+  contractAddress?: string;
+  decimals: number;
+  available: boolean;
+  priceFeedSymbol: string;
+};
 
 type WalletSource = {
   assetSymbol: string;
@@ -28,7 +38,8 @@ const emptyWallet: WalletSource = {
 export default function CreateProofPage() {
   const router = useRouter();
   const [projectSlug, setProjectSlug] = useState(projects[0].slug);
-  const [selectedAssets, setSelectedAssets] = useState<string[]>(["FXRP", "FBTC"]);
+  const [assets, setAssets] = useState<AssetMetadata[]>([]);
+  const [selectedAssets, setSelectedAssets] = useState<string[]>(["FXRP"]);
   const [requiredThreshold, setRequiredThreshold] = useState("1000000");
   const [wallets, setWallets] = useState<WalletSource[]>([
     { assetSymbol: "FXRP", chain: "flare", walletAddress: "" },
@@ -41,6 +52,60 @@ export default function CreateProofPage() {
     () => projects.find((project) => project.slug === projectSlug) ?? projects[0],
     [projectSlug],
   );
+  const availableAssets = useMemo(() => assets.filter((asset) => asset.available && asset.network === "coston2"), [assets]);
+  const plannedAssets = useMemo(() => assets.filter((asset) => !asset.available), [assets]);
+
+  useEffect(() => {
+    let active = true;
+
+    api.get<{ assets: AssetMetadata[] }>("/assets")
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setAssets(response.assets);
+
+        const selectable = response.assets
+          .filter((asset) => asset.available && asset.network === "coston2")
+          .map((asset) => asset.symbol);
+        setSelectedAssets((current) => current.filter((asset) => selectable.includes(asset)));
+        setWallets((current) => current.map((wallet) => ({
+          ...wallet,
+          assetSymbol: selectable.includes(wallet.assetSymbol) ? wallet.assetSymbol : selectable[0] ?? wallet.assetSymbol,
+        })));
+      })
+      .catch(() => {
+        if (active) {
+          setAssets([
+            {
+              symbol: "FXRP",
+              displayName: "FXRP",
+              type: "fasset",
+              baseAsset: "XRP",
+              network: "coston2",
+              decimals: 6,
+              available: true,
+              priceFeedSymbol: "XRP/USD",
+            },
+            {
+              symbol: "FLR",
+              displayName: "Flare",
+              type: "native",
+              baseAsset: "FLR",
+              network: "coston2",
+              decimals: 18,
+              available: true,
+              priceFeedSymbol: "FLR/USD",
+            },
+          ]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function toggleAsset(asset: string) {
     setSelectedAssets((current) =>
@@ -176,25 +241,34 @@ export default function CreateProofPage() {
           <section className="rounded-2xl border border-border bg-card p-6">
             <p className="text-sm font-medium text-muted-foreground">Asset selector</p>
             <div className="mt-4 flex flex-wrap gap-3">
-              {supportedAssets.map((asset) => {
-                const active = selectedAssets.includes(asset);
+              {availableAssets.map((asset) => {
+                const active = selectedAssets.includes(asset.symbol);
 
                 return (
                   <button
-                    key={asset}
+                    key={asset.symbol}
                     type="button"
-                    onClick={() => toggleAsset(asset)}
+                    onClick={() => toggleAsset(asset.symbol)}
                     className={
                       active
                         ? "rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
                         : "rounded-lg border border-border bg-elevated px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                     }
                   >
-                    {asset}
+                    {asset.symbol}
                   </button>
                 );
               })}
             </div>
+            {plannedAssets.length ? (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {plannedAssets.map((asset) => (
+                  <span key={asset.symbol} className="rounded-md border border-border bg-elevated px-3 py-1 text-xs font-medium text-muted-foreground">
+                    {asset.symbol} coming later
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-6">
@@ -221,9 +295,9 @@ export default function CreateProofPage() {
                       onChange={(event) => updateWallet(index, "assetSymbol", event.target.value)}
                       className="field-input"
                     >
-                      {supportedAssets.map((asset) => (
-                        <option key={asset} value={asset}>
-                          {asset}
+                      {availableAssets.map((asset) => (
+                        <option key={asset.symbol} value={asset.symbol}>
+                          {asset.symbol}
                         </option>
                       ))}
                     </select>

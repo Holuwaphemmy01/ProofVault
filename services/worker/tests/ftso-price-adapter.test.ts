@@ -14,15 +14,30 @@ describe("FTSO price adapter", () => {
       },
     });
 
-    const result = await adapter.getPrice({ assetSymbol: "FBTC" });
+    const result = await adapter.getPrice({ assetSymbol: "BTC" });
 
-    expect(result.assetSymbol).toBe("FBTC");
+    expect(result.assetSymbol).toBe("BTC");
     expect(result.price).toBe(27000);
     expect(result.currency).toBe("USD");
     expect(result.source).toBe("ftso");
     expect(result.feedId).toBe("0x014254432f55534400000000000000000000000000");
     expect(result.decimals).toBe(-8);
     expect(result.timestamp).toBe(now);
+  });
+
+  it("maps FXRP to the XRP/USD FTSO feed", async () => {
+    const adapter = new FtsoPriceAdapter({
+      feedReader: {
+        getFeedById: vi.fn().mockResolvedValue([60000000n, -8, now]),
+      },
+    });
+
+    const result = await adapter.getPrice({ assetSymbol: "FXRP" });
+
+    expect(result.assetSymbol).toBe("FXRP");
+    expect(result.price).toBe(0.6);
+    expect(result.source).toBe("ftso");
+    expect(result.feedId).toBe("0x015852502f55534400000000000000000000000000");
   });
 
   it("normalizes FLR/USD feed values", async () => {
@@ -52,7 +67,7 @@ describe("FTSO price adapter", () => {
       },
     });
 
-    await expect(adapter.getPrice({ assetSymbol: "FXRP" })).rejects.toThrow("Unsupported FTSO price feed");
+    await expect(adapter.getPrice({ assetSymbol: "DOGE" })).rejects.toThrow("Unsupported FTSO price feed");
   });
 
   it("rejects malformed feed results", async () => {
@@ -93,7 +108,7 @@ describe("FTSO price adapter", () => {
         async getPrice(request) {
           return {
             assetSymbol: request.assetSymbol,
-            price: request.assetSymbol === "FBTC" ? 27000 : 0.025,
+            price: request.assetSymbol === "BTC" ? 27000 : 0.025,
             currency: "USD",
             source: "ftso",
             timestamp: now,
@@ -104,10 +119,10 @@ describe("FTSO price adapter", () => {
       },
       privatePayload: privatePayload({
         requiredThreshold: 3000,
-        selectedAssets: ["FBTC", "FLR"],
+        selectedAssets: ["BTC", "FLR"],
         wallets: [
           {
-            assetSymbol: "FBTC",
+            assetSymbol: "BTC",
             chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },

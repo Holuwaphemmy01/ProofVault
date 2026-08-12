@@ -22,15 +22,15 @@ function expectNoPrivateValuationLeak(result: unknown) {
 }
 
 describe("data integration reserve calculation", () => {
-  it("returns PASS for multi-asset FBTC and FXRP above threshold", async () => {
+  it("returns PASS for multi-asset BTC and FXRP above threshold", async () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["FBTC", "FXRP"],
+        selectedAssets: ["BTC", "FXRP"],
         wallets: [
           {
-            assetSymbol: "FBTC",
+            assetSymbol: "BTC",
             chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },
@@ -47,15 +47,15 @@ describe("data integration reserve calculation", () => {
     expect(result.outcome).toBe("PASS");
   });
 
-  it("returns FAIL for FDOGE below threshold", async () => {
+  it("returns FAIL for DOGE below threshold", async () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["FDOGE"],
+        selectedAssets: ["DOGE"],
         wallets: [
           {
-            assetSymbol: "FDOGE",
+            assetSymbol: "DOGE",
             chain: "flare",
             walletAddress: "D-private-demo-wallet-address",
           },
@@ -72,10 +72,10 @@ describe("data integration reserve calculation", () => {
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 160000,
-        selectedAssets: ["FDOGE"],
+        selectedAssets: ["DOGE"],
         wallets: [
           {
-            assetSymbol: "FDOGE",
+            assetSymbol: "DOGE",
             chain: "flare",
             walletAddress: "D-private-demo-wallet-address",
           },
@@ -87,15 +87,15 @@ describe("data integration reserve calculation", () => {
     expect(result.outcome).toBe("PASS");
   });
 
-  it("aggregates mixed FBTC, FXRP, and FDOGE assets", async () => {
+  it("aggregates mixed BTC, FXRP, and DOGE assets", async () => {
     const result = await calculatePrivateReserve({
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 460000,
-        selectedAssets: ["FBTC", "FXRP", "FDOGE"],
+        selectedAssets: ["BTC", "FXRP", "DOGE"],
         wallets: [
           {
-            assetSymbol: "FBTC",
+            assetSymbol: "BTC",
             chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },
@@ -105,7 +105,7 @@ describe("data integration reserve calculation", () => {
             walletAddress: "r-private-demo-wallet-address",
           },
           {
-            assetSymbol: "FDOGE",
+            assetSymbol: "DOGE",
             chain: "flare",
             walletAddress: "D-private-demo-wallet-address",
           },
@@ -138,10 +138,10 @@ describe("data integration reserve calculation", () => {
       ...baseInput,
       privatePayload: privatePayload({
         requiredThreshold: 200000,
-        selectedAssets: ["FBTC", "FXRP"],
+        selectedAssets: ["BTC", "FXRP"],
         wallets: [
           {
-            assetSymbol: "FBTC",
+            assetSymbol: "BTC",
             chain: "flare",
             walletAddress: "bc1q-private-demo-wallet-address",
           },

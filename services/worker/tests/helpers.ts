@@ -17,13 +17,13 @@ export function privatePayload(overrides: Partial<PrivateProofPayload> = {}): Pr
     proofName: "July 2026 Reserve Verification",
     requiredThreshold: 1000000,
     thresholdCurrency: "USD",
-    selectedAssets: ["FBTC", "FXRP"],
+    selectedAssets: ["BTC", "FXRP"],
     wallets: [
       {
-        assetSymbol: "FBTC",
+        assetSymbol: "BTC",
         chain: "flare",
         walletAddress: "bc1q-private-demo-wallet-address",
-        sourceLabel: "FBTC Reserve Source 1",
+        sourceLabel: "BTC Reserve Source 1",
       },
       {
         assetSymbol: "FXRP",

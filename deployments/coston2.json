@@ -1,0 +1,8 @@
+{
+  "network": "coston2",
+  "chainId": 114,
+  "registryAddress": "0x461F385e191de5a2DccB28895E594c8bE765434c",
+  "deploymentTxHash": "0x2ce1fdde7735368d787f080385b22d23a32b056ea3b2a3b9fdf8816945ade6a3",
+  "blockNumber": "33984373",
+  "deployedAt": "2026-08-12T22:45:56.657Z"
+}

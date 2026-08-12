@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SUPPORTED_ASSETS } from "@proofvault/config";
+import { getSupportedFlareAssets } from "../services/flare-assets.service.js";
 
 export async function assetsRoutes(app: FastifyInstance) {
   app.get("/assets", {
@@ -8,6 +8,6 @@ export async function assetsRoutes(app: FastifyInstance) {
       summary: "List supported ProofVault assets",
     },
   }, async () => ({
-    assets: SUPPORTED_ASSETS,
+    assets: await getSupportedFlareAssets(),
   }));
 }

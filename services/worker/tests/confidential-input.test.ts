@@ -83,9 +83,9 @@ describe("confidential input modes", () => {
       projectSlug: "atlasx-exchange",
       requiredThreshold: 100,
       thresholdCurrency: "USD",
-      selectedAssets: ["FBTC"],
+      selectedAssets: ["BTC"],
       walletReferences: [{
-        assetSymbol: "FBTC",
+        assetSymbol: "BTC",
         chain: "flare",
         encryptedWalletReference: "encrypted",
         walletAddressHash: "hash",
