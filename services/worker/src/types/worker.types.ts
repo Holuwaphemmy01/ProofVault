@@ -15,6 +15,7 @@ export type PublicWorkerJob = {
   signature?: string;
   signerAddress?: string;
   workerSignedAt?: number;
+  dataSources?: string[];
   callbackStatus?: CallbackStatus;
   callbackError?: string;
   createdAt: string;

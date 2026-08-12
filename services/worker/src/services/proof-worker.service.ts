@@ -79,6 +79,7 @@ export async function processProofJob(input: ProofJobInput) {
       signerAddress: signature.signerAddress,
       signature: signature.signature,
       verifiedWith: reserveResult.verifiedWith,
+      dataSources: reserveResult.dataSources,
     });
     const callback = await sendWorkerCallback({
       proofRequestId: input.proofRequestId,
@@ -102,6 +103,7 @@ export async function processProofJob(input: ProofJobInput) {
       signature: signature.signature,
       signerAddress: signature.signerAddress,
       workerSignedAt: signature.workerSignedAt,
+      dataSources: reserveResult.dataSources,
       callbackStatus: callback.callbackStatus,
       callbackError: callback.callbackError,
     });

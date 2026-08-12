@@ -10,20 +10,42 @@ import type {
 const ftsoV2Abi = [
   "function getFeedById(bytes21 _feedId) external payable returns (uint256 _value, int8 _decimals, uint64 _timestamp)",
 ] as const;
+const flareContractRegistryAbi = [
+  "function getContractAddressByName(string _name) external view returns (address)",
+] as const;
+const zeroAddress = "0x0000000000000000000000000000000000000000";
 
-const feedIds: Record<string, string> = {
-  FLR: "0x01464c522f55534400000000000000000000000000",
-  BTC: "0x014254432f55534400000000000000000000000000",
-  XRP: "0x015852502f55534400000000000000000000000000",
+const feedDefinitions: Record<string, { feedSymbol: string; feedId: string }> = {
+  FLR: {
+    feedSymbol: "FLR/USD",
+    feedId: "0x01464c522f55534400000000000000000000000000",
+  },
+  BTC: {
+    feedSymbol: "BTC/USD",
+    feedId: "0x014254432f55534400000000000000000000000000",
+  },
+  XRP: {
+    feedSymbol: "XRP/USD",
+    feedId: "0x015852502f55534400000000000000000000000000",
+  },
+  DOGE: {
+    feedSymbol: "DOGE/USD",
+    feedId: "0x01444f47452f555344000000000000000000000000",
+  },
 };
 
 type FtsoFeedReader = {
   getFeedById(feedId: string): Promise<readonly [bigint, bigint | number, bigint | number]>;
 };
+type FtsoContractResolution = {
+  contractAddress: string;
+  contractAddressSource: "contract-registry" | "env-override" | "injected";
+};
 
 type FtsoPriceAdapterOptions = {
   rpcUrl?: string;
   ftsoV2Address?: string;
+  contractRegistryAddress?: string;
   timeoutMs?: number;
   feedReader?: FtsoFeedReader;
   maxStalenessSeconds?: number;
@@ -33,6 +55,7 @@ export class FtsoPriceAdapter implements PriceAdapter {
   private readonly feedReader: FtsoFeedReader;
   private readonly timeoutMs: number;
   private readonly maxStalenessSeconds: number;
+  private readonly contractResolution: Promise<FtsoContractResolution>;
 
   constructor(options: FtsoPriceAdapterOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? env.FTSO_PRICE_TIMEOUT_MS;
@@ -40,11 +63,14 @@ export class FtsoPriceAdapter implements PriceAdapter {
 
     if (options.feedReader) {
       this.feedReader = options.feedReader;
+      this.contractResolution = Promise.resolve({
+        contractAddress: options.ftsoV2Address ?? "",
+        contractAddressSource: "injected",
+      });
       return;
     }
 
     const rpcUrl = options.rpcUrl ?? env.COSTON2_RPC_URL;
-    const ftsoV2Address = options.ftsoV2Address ?? env.FTSOV2_ADDRESS;
 
     if (env.FTSO_NETWORK !== "coston2") {
       throw new Error(`Unsupported FTSO network: ${env.FTSO_NETWORK}`);
@@ -55,21 +81,36 @@ export class FtsoPriceAdapter implements PriceAdapter {
     }
 
     const provider = new JsonRpcProvider(rpcUrl, 114);
-    this.feedReader = new Contract(ftsoV2Address, ftsoV2Abi, provider) as unknown as FtsoFeedReader;
+    this.contractResolution = resolveFtsoV2Contract({
+      provider,
+      envOverrideAddress: options.ftsoV2Address ?? env.FTSOV2_ADDRESS,
+      registryAddress: options.contractRegistryAddress ?? env.FDC_CONTRACT_REGISTRY_ADDRESS,
+    });
+    this.feedReader = {
+      getFeedById: async (feedId) => {
+        const { contractAddress } = await this.contractResolution;
+        const contract = new Contract(contractAddress, ftsoV2Abi, provider);
+
+        return contract.getFeedById.staticCall(feedId, { value: 0n }) as Promise<
+          readonly [bigint, bigint | number, bigint | number]
+        >;
+      },
+    };
   }
 
   async getPrice(request: PriceRequest): Promise<PriceResult> {
     const baseAsset = getBaseAssetSymbol(request.assetSymbol);
-    const feedId = feedIds[baseAsset];
+    const feed = feedDefinitions[baseAsset];
 
-    if (!feedId) {
+    if (!feed) {
       throw new Error(`Unsupported FTSO price feed: ${request.assetSymbol}`);
     }
 
     const [value, rawDecimals, rawTimestamp] = await withTimeout(
-      this.feedReader.getFeedById(feedId),
+      this.feedReader.getFeedById(feed.feedId),
       this.timeoutMs,
     );
+    const contractResolution = await this.contractResolution;
     const decimals = Number(rawDecimals);
     const timestamp = Number(rawTimestamp);
 
@@ -85,12 +126,16 @@ export class FtsoPriceAdapter implements PriceAdapter {
 
     return {
       assetSymbol: request.assetSymbol,
+      feedSymbol: feed.feedSymbol,
       price: decimalValueToNumber(value, decimals),
       currency: "USD",
       source: "ftso",
+      dataSource: "FTSO",
       timestamp,
       decimals,
-      feedId,
+      feedId: feed.feedId,
+      contractAddress: contractResolution.contractAddress,
+      contractAddressSource: contractResolution.contractAddressSource,
     };
   }
 }
@@ -104,14 +149,14 @@ export function decimalValueToNumber(value: bigint, decimals: number) {
     return Number(value);
   }
 
-  if (decimals > 0) {
-    return Number(value * 10n ** BigInt(decimals));
+  if (decimals < 0) {
+    return Number(value * 10n ** BigInt(Math.abs(decimals)));
   }
 
-  const divisor = 10n ** BigInt(Math.abs(decimals));
+  const divisor = 10n ** BigInt(decimals);
   const whole = value / divisor;
   const fraction = value % divisor;
-  const paddedFraction = fraction.toString().padStart(Math.abs(decimals), "0");
+  const paddedFraction = fraction.toString().padStart(decimals, "0");
 
   return Number(`${whole.toString()}.${paddedFraction}`);
 }
@@ -133,4 +178,35 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
       },
     );
   });
+}
+
+async function resolveFtsoV2Contract(input: {
+  provider: JsonRpcProvider;
+  registryAddress: string;
+  envOverrideAddress: string;
+}): Promise<FtsoContractResolution> {
+  try {
+    const registry = new Contract(input.registryAddress, flareContractRegistryAbi, input.provider);
+    const contractAddress = await registry.getContractAddressByName("FtsoV2") as string;
+
+    if (contractAddress && contractAddress !== zeroAddress) {
+      return {
+        contractAddress,
+        contractAddressSource: "contract-registry",
+      };
+    }
+  } catch (error) {
+    if (!input.envOverrideAddress) {
+      throw error;
+    }
+  }
+
+  if (!input.envOverrideAddress) {
+    throw new Error("FtsoV2 contract address could not be resolved from Flare Contract Registry");
+  }
+
+  return {
+    contractAddress: input.envOverrideAddress,
+    contractAddressSource: "env-override",
+  };
 }

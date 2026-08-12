@@ -11,9 +11,16 @@ async function main() {
 
   console.log({
     symbol: result.assetSymbol,
+    feedSymbol: result.feedSymbol,
     price: result.price,
+    decimals: result.decimals,
     timestamp: result.timestamp,
     source: result.source,
+    network: "coston2",
+    contractAddress: result.contractAddress,
+    contractAddressSource: result.contractAddressSource,
+    feedId: result.feedId,
+    fallbackUsed: result.source === "mock-fallback",
   });
 }
 

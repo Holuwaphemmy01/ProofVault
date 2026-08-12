@@ -16,6 +16,7 @@ type GenerateProofReceiptInput = {
   signerAddress: string;
   signature: string;
   verifiedWith?: string[];
+  dataSources?: string[];
 };
 
 export function generateProofReceipt(input: GenerateProofReceiptInput) {
@@ -35,6 +36,7 @@ export function generateProofReceipt(input: GenerateProofReceiptInput) {
     verification: {
       method: "confidential_threshold_proof",
       verifiedWith: input.verifiedWith ?? [],
+      dataSources: input.dataSources ?? [],
       worker: {
         signer: input.signerAddress,
         signature: input.signature,

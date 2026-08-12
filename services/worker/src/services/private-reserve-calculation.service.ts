@@ -49,6 +49,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
 
   const priceAdapter = input.priceAdapter ?? getPriceAdapter();
   const priceSources = new Set<string>();
+  const dataSources = new Set<string>();
   const reserveValues = await Promise.all(privatePayload.wallets.map(async (wallet) => {
     const adapter = getBalanceAdapter(wallet.chain, wallet.assetSymbol);
     const [balanceResult, priceResult] = await Promise.all([
@@ -63,6 +64,13 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
       }),
     ]);
     priceSources.add(priceResult.source);
+    if (priceResult.dataSource) {
+      dataSources.add(priceResult.dataSource);
+    } else if (priceResult.source === "ftso") {
+      dataSources.add("FTSO");
+    } else if (priceResult.source === "mock-fallback") {
+      dataSources.add("MOCK_PRICE_FALLBACK");
+    }
 
     return balanceResult.balance * priceResult.price;
   }));
@@ -88,11 +96,13 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
     ...(priceSources.has("ftso") ? ["FTSO"] : []),
     ...(thresholdResult.computeSource === "fcc" ? ["FCC"] : ["LOCAL_FALLBACK_COMPUTE"]),
   ];
+  const publicDataSources = Array.from(dataSources);
   const proofHash = thresholdResult.outputCommitment;
   const resultMetadataHash = sha256Hex(canonicalJson({
     status: outcome,
     thresholdMet,
     verifiedWith,
+    dataSources: publicDataSources,
     computeSource: thresholdResult.computeSource,
     executionReference: thresholdResult.executionReference,
     privacyMode: "confidential_threshold_proof",
@@ -104,6 +114,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
     proofHash,
     resultMetadataHash,
     verifiedWith,
+    dataSources: publicDataSources,
     computeSource: thresholdResult.computeSource,
     executionReference: thresholdResult.executionReference,
   };

@@ -8,6 +8,7 @@ export type ProofComputationResult = {
   proofHash: string;
   resultMetadataHash: string;
   verifiedWith: string[];
+  dataSources?: string[];
   computeSource?: string;
   executionReference?: string;
 };

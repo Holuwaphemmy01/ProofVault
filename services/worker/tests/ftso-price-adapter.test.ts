@@ -10,7 +10,7 @@ describe("FTSO price adapter", () => {
   it("normalizes BTC/USD feed values", async () => {
     const adapter = new FtsoPriceAdapter({
       feedReader: {
-        getFeedById: vi.fn().mockResolvedValue([2700000000000n, -8, now]),
+        getFeedById: vi.fn().mockResolvedValue([2700000n, 2, now]),
       },
     });
 
@@ -21,14 +21,14 @@ describe("FTSO price adapter", () => {
     expect(result.currency).toBe("USD");
     expect(result.source).toBe("ftso");
     expect(result.feedId).toBe("0x014254432f55534400000000000000000000000000");
-    expect(result.decimals).toBe(-8);
+    expect(result.decimals).toBe(2);
     expect(result.timestamp).toBe(now);
   });
 
   it("maps FXRP to the XRP/USD FTSO feed", async () => {
     const adapter = new FtsoPriceAdapter({
       feedReader: {
-        getFeedById: vi.fn().mockResolvedValue([60000000n, -8, now]),
+        getFeedById: vi.fn().mockResolvedValue([600000n, 6, now]),
       },
     });
 
@@ -43,7 +43,7 @@ describe("FTSO price adapter", () => {
   it("normalizes FLR/USD feed values", async () => {
     const adapter = new FtsoPriceAdapter({
       feedReader: {
-        getFeedById: vi.fn().mockResolvedValue([2500000n, -8, now]),
+        getFeedById: vi.fn().mockResolvedValue([2500000n, 8, now]),
       },
     });
 
@@ -54,9 +54,23 @@ describe("FTSO price adapter", () => {
     expect(result.feedId).toBe("0x01464c522f55534400000000000000000000000000");
   });
 
+  it("normalizes DOGE/USD feed values", async () => {
+    const adapter = new FtsoPriceAdapter({
+      feedReader: {
+        getFeedById: vi.fn().mockResolvedValue([8000000n, 8, now]),
+      },
+    });
+
+    const result = await adapter.getPrice({ assetSymbol: "DOGE" });
+
+    expect(result.price).toBe(0.08);
+    expect(result.source).toBe("ftso");
+    expect(result.feedId).toBe("0x01444f47452f555344000000000000000000000000");
+  });
+
   it("converts decimal representations", () => {
-    expect(decimalValueToNumber(123456n, -4)).toBe(12.3456);
-    expect(decimalValueToNumber(123n, 2)).toBe(12300);
+    expect(decimalValueToNumber(123456n, 4)).toBe(12.3456);
+    expect(decimalValueToNumber(123n, -2)).toBe(12300);
     expect(decimalValueToNumber(42n, 0)).toBe(42);
   });
 
@@ -67,7 +81,7 @@ describe("FTSO price adapter", () => {
       },
     });
 
-    await expect(adapter.getPrice({ assetSymbol: "DOGE" })).rejects.toThrow("Unsupported FTSO price feed");
+    await expect(adapter.getPrice({ assetSymbol: "USDT0" })).rejects.toThrow("Unsupported FTSO price feed");
   });
 
   it("rejects malformed feed results", async () => {
@@ -95,6 +109,7 @@ describe("FTSO price adapter", () => {
     const result = await adapter.getPrice({ assetSymbol: "FXRP" });
 
     expect(result.source).toBe("mock-fallback");
+    expect(result.dataSource).toBe("MOCK_PRICE_FALLBACK");
     expect(result.price).toBe(0.6);
   });
 
@@ -137,7 +152,42 @@ describe("FTSO price adapter", () => {
 
     expect(result.thresholdMet).toBe(true);
     expect(result.verifiedWith).toContain("FTSO");
+    expect(result.dataSources).toContain("FTSO");
     expect(JSON.stringify(result)).not.toContain("27000");
     expect(JSON.stringify(result)).not.toContain("0.025");
+  });
+
+  it("does not claim FTSO when fallback pricing is used", async () => {
+    const result = await calculatePrivateReserve({
+      proofRequestId: "proof-request-id",
+      onChainRequestId: "1",
+      projectSlug: "atlasx-exchange",
+      workerSignedAt: now,
+      priceAdapter: {
+        async getPrice(request) {
+          return {
+            assetSymbol: request.assetSymbol,
+            price: 0.6,
+            currency: "USD",
+            source: "mock-fallback",
+            dataSource: "MOCK_PRICE_FALLBACK",
+          };
+        },
+      },
+      privatePayload: privatePayload({
+        requiredThreshold: 200000,
+        selectedAssets: ["FXRP"],
+        wallets: [
+          {
+            assetSymbol: "FXRP",
+            chain: "flare",
+            walletAddress: "r-private-demo-wallet-address",
+          },
+        ],
+      }),
+    });
+
+    expect(result.verifiedWith).not.toContain("FTSO");
+    expect(result.dataSources).toContain("MOCK_PRICE_FALLBACK");
   });
 });

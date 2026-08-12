@@ -14,6 +14,7 @@ export class MockPriceAdapter implements PriceAdapter {
       price: this.getMockUsdPrice(request.assetSymbol),
       currency: "USD",
       source: this.source,
+      dataSource: this.source === "mock-fallback" ? "MOCK_PRICE_FALLBACK" : undefined,
     };
   }
 
