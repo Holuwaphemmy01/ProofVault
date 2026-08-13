@@ -27,6 +27,12 @@ function encodeAddressValidityResponse(address: string, isValid = true) {
 function mockedOptions(overrides: {
   verifyProof?: boolean;
   proofAvailable?: boolean;
+  verifierStatus?: number;
+  verifierBody?: unknown;
+  daBody?: unknown;
+  fdcHubFails?: boolean;
+  feeFails?: boolean;
+  finalized?: boolean;
   responseAddress?: string;
   responseIsValid?: boolean;
 } = {}): FdcClientOptions {
@@ -36,15 +42,18 @@ function mockedOptions(overrides: {
   );
   const fetchFn = vi.fn(async (url: string) => {
     if (url.includes("prepareRequest")) {
-      return Response.json({ abiEncodedRequest: `0x${"ab".repeat(16)}` });
+      return Response.json(
+        overrides.verifierBody ?? { abiEncodedRequest: `0x${"ab".repeat(16)}`, status: "VALID" },
+        { status: overrides.verifierStatus ?? 200 },
+      );
     }
 
-    return Response.json(overrides.proofAvailable === false
+    return Response.json(overrides.daBody ?? (overrides.proofAvailable === false
       ? {}
       : {
           response_hex: responseHex,
           proof: [`0x${"34".repeat(32)}`],
-        });
+        }));
   }) as unknown as typeof fetch;
 
   return {
@@ -54,25 +63,39 @@ function mockedOptions(overrides: {
     },
     contracts: {
       fdcHub: {
-        requestAttestation: vi.fn(async () => ({
+        requestAttestation: vi.fn(async () => {
+          if (overrides.fdcHubFails) {
+            throw new Error("FdcHub rejected request");
+          }
+
+          return {
           hash: `0x${"56".repeat(32)}`,
           wait: vi.fn(async () => ({
             blockNumber: 10,
             hash: `0x${"56".repeat(32)}`,
           })),
-        })),
+          };
+        }),
       },
       feeConfigurations: {
-        getRequestFee: vi.fn(async () => 1n),
+        getRequestFee: vi.fn(async () => {
+          if (overrides.feeFails) {
+            throw new Error("fee unavailable");
+          }
+
+          return 1n;
+        }),
       },
       flareSystemsManager: {
+        getCurrentVotingEpochId: vi.fn(async () => 1),
         firstVotingRoundStartTs: vi.fn(async () => 1000n),
         votingEpochDurationSeconds: vi.fn(async () => 90n),
       },
       relay: {
-        isFinalized: vi.fn(async () => true),
+        isFinalized: vi.fn(async () => overrides.finalized ?? true),
       },
       verification: {
+        fdcProtocolId: vi.fn(async () => 200),
         verifyAddressValidity: vi.fn(async () => overrides.verifyProof ?? true),
         verifyPayment: vi.fn(async () => true),
       },
@@ -93,8 +116,14 @@ describe("FDC AddressValidity integration", () => {
 
     expect(result.valid).toBe(true);
     expect(result.attestationType).toBe("AddressValidity");
+    expect(result.chain).toBe("XRP");
+    expect(result.source).toBe("FDC");
     expect(result.verificationSource).toBe("FDC");
     expect(result.proofAvailable).toBe(true);
+    expect(result.proofVerified).toBe(true);
+    expect(result.votingRoundId).toBe(1);
+    expect(result.fdcHubAddressSource).toBe("injected");
+    expect(result.fdcVerificationAddressSource).toBe("injected");
     expect(result.requestTxHash).toMatch(/^0x/);
     expect(serialized).not.toContain(xrplAddress);
   });
@@ -113,11 +142,60 @@ describe("FDC AddressValidity integration", () => {
     }, mockedOptions({ verifyProof: false }))).rejects.toThrow("proof verification failed");
   });
 
+  it("rejects when the verifier prepare request fails", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ verifierStatus: 500 }))).rejects.toThrow("verifier request failed");
+  });
+
+  it("rejects when the verifier returns malformed request data", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ verifierBody: { abiEncodedRequest: "not-hex" } }))).rejects.toThrow("malformed abiEncodedRequest");
+  });
+
+  it("rejects when the verifier marks the prepared request invalid", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ verifierBody: { abiEncodedRequest: `0x${"ab".repeat(16)}`, status: "INVALID" } }))).rejects.toThrow("invalid request status");
+  });
+
+  it("fails cleanly when FDC request fee retrieval fails", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ feeFails: true }))).rejects.toThrow("fee retrieval failed");
+  });
+
+  it("fails cleanly when FdcHub submission fails", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ fdcHubFails: true }))).rejects.toThrow("FdcHub rejected request");
+  });
+
+  it("fails cleanly when the FDC round is not finalized", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ finalized: false }))).rejects.toThrow("was not finalized before timeout");
+  });
+
   it("fails cleanly when the DA layer does not provide a proof", async () => {
     await expect(validateExternalAddress({
       chain: "xrpl",
       address: xrplAddress,
     }, mockedOptions({ proofAvailable: false }))).rejects.toThrow("proof was not available");
+  });
+
+  it("rejects malformed DA proof responses", async () => {
+    await expect(validateExternalAddress({
+      chain: "xrpl",
+      address: xrplAddress,
+    }, mockedOptions({ daBody: { response_hex: "not-hex", proof: [] } }))).rejects.toThrow("malformed AddressValidity response");
   });
 
   it("rejects when the proof response address does not match the request", async () => {

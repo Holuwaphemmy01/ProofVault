@@ -1,6 +1,7 @@
 export type FdcSourceConfig = {
   sourceId: "testXRP" | "testBTC" | "testDOGE";
-  verifierPath: "xrp" | "btc" | "doge";
+  verifierPath: "xrp" | "btc_testnet4" | "doge";
+  canonicalChain: "XRP" | "BTC" | "DOGE";
 };
 
 export type AddressValidityInput = {
@@ -10,12 +11,21 @@ export type AddressValidityInput = {
 
 export type AddressValidityResult = {
   attestationType: "AddressValidity";
-  chain: string;
+  chain: "XRP" | "BTC" | "DOGE";
   valid: boolean;
+  source: "FDC";
   roundId: number;
+  votingRoundId: number;
   requestTxHash: string;
+  requestBlockNumber: number;
   proofAvailable: boolean;
+  proofVerified: true;
   verificationSource: "FDC";
+  fdcHubAddress: string;
+  fdcHubAddressSource: "contract-registry" | "injected";
+  fdcVerificationAddress: string;
+  fdcVerificationAddressSource: "contract-registry" | "injected";
+  verifiedAt: string;
 };
 
 export type PaymentAttestationInput = {
@@ -37,6 +47,7 @@ export type PaymentAttestationResult = {
 
 export type PreparedFdcRequest = {
   abiEncodedRequest: string;
+  status?: string;
 };
 
 export type FdcDaProofResponse = {

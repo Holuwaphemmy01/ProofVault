@@ -7,13 +7,13 @@ import type {
 } from "./fdc.types.js";
 
 const sourceConfigs: Record<string, FdcSourceConfig> = {
-  xrp: { sourceId: "testXRP", verifierPath: "xrp" },
-  xrpl: { sourceId: "testXRP", verifierPath: "xrp" },
-  testxrp: { sourceId: "testXRP", verifierPath: "xrp" },
-  btc: { sourceId: "testBTC", verifierPath: "btc" },
-  bitcoin: { sourceId: "testBTC", verifierPath: "btc" },
-  doge: { sourceId: "testDOGE", verifierPath: "doge" },
-  dogecoin: { sourceId: "testDOGE", verifierPath: "doge" },
+  xrp: { sourceId: "testXRP", verifierPath: "xrp", canonicalChain: "XRP" },
+  xrpl: { sourceId: "testXRP", verifierPath: "xrp", canonicalChain: "XRP" },
+  testxrp: { sourceId: "testXRP", verifierPath: "xrp", canonicalChain: "XRP" },
+  btc: { sourceId: "testBTC", verifierPath: "btc_testnet4", canonicalChain: "BTC" },
+  bitcoin: { sourceId: "testBTC", verifierPath: "btc_testnet4", canonicalChain: "BTC" },
+  doge: { sourceId: "testDOGE", verifierPath: "doge", canonicalChain: "DOGE" },
+  dogecoin: { sourceId: "testDOGE", verifierPath: "doge", canonicalChain: "DOGE" },
 };
 
 export async function validateExternalAddress(
@@ -46,6 +46,7 @@ export async function validateExternalAddress(
   }
 
   const verified = await client.verifyAddressValidityProof(proof);
+  const verificationMetadata = await client.getFdcVerificationMetadata();
   const valid = verified && proof.data.responseBody.isValid;
 
   if (!valid) {
@@ -54,12 +55,21 @@ export async function validateExternalAddress(
 
   return {
     attestationType: "AddressValidity",
-    chain,
+    chain: config.canonicalChain,
     valid,
+    source: "FDC",
     roundId: submission.roundId,
+    votingRoundId: submission.roundId,
     requestTxHash: submission.requestTxHash,
+    requestBlockNumber: submission.requestBlockNumber,
     proofAvailable: true,
+    proofVerified: true,
     verificationSource: "FDC",
+    fdcHubAddress: submission.fdcHubAddress,
+    fdcHubAddressSource: submission.fdcHubAddressSource,
+    fdcVerificationAddress: verificationMetadata.address,
+    fdcVerificationAddressSource: verificationMetadata.source,
+    verifiedAt: new Date().toISOString(),
     addressHash: sha256Hex(address),
   };
 }

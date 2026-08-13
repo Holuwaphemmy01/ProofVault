@@ -3,11 +3,11 @@ import { validateExternalAddress } from "../src/integrations/fdc/address-validit
 
 dotenv.config();
 
-const address = process.argv[2] ?? process.env.FDC_TEST_ADDRESS;
+const address = process.argv[2] ?? process.env.FDC_TEST_XRP_ADDRESS;
 const chain = process.argv[3] ?? process.env.FDC_TEST_CHAIN ?? "xrpl";
 
 if (!address) {
-  throw new Error("Provide an XRPL testnet address as an argument or FDC_TEST_ADDRESS");
+  throw new Error("Provide an XRPL testnet address as an argument or FDC_TEST_XRP_ADDRESS");
 }
 
 const result = await validateExternalAddress({
@@ -19,9 +19,16 @@ console.log(JSON.stringify({
   attestationType: result.attestationType,
   chain: result.chain,
   valid: result.valid,
-  roundId: result.roundId,
+  source: result.source,
+  votingRoundId: result.votingRoundId,
   requestTxHash: result.requestTxHash,
+  requestBlockNumber: result.requestBlockNumber,
   proofAvailable: result.proofAvailable,
-  verificationSource: result.verificationSource,
+  proofVerified: result.proofVerified,
+  fdcHubAddress: result.fdcHubAddress,
+  fdcHubAddressSource: result.fdcHubAddressSource,
+  fdcVerificationAddress: result.fdcVerificationAddress,
+  fdcVerificationAddressSource: result.fdcVerificationAddressSource,
+  verifiedAt: result.verifiedAt,
   addressHash: result.addressHash,
 }, null, 2));

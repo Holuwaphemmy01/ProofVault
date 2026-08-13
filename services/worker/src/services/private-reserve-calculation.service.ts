@@ -19,6 +19,7 @@ type CalculatePrivateReserveInput = {
   workerSignedAt: number;
   priceAdapter?: PriceAdapter;
   verifiedWith?: string[];
+  dataSources?: string[];
   fccClient?: FccClient;
   fccMode?: "live" | "local";
   fccFallbackEnabled?: boolean;
@@ -49,7 +50,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
 
   const priceAdapter = input.priceAdapter ?? getPriceAdapter();
   const priceSources = new Set<string>();
-  const dataSources = new Set<string>();
+  const dataSources = new Set<string>(input.dataSources ?? []);
   const reserveValues = await Promise.all(privatePayload.wallets.map(async (wallet) => {
     const adapter = getBalanceAdapter(wallet.chain, wallet.assetSymbol);
     const [balanceResult, priceResult] = await Promise.all([

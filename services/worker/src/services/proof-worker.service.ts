@@ -49,6 +49,9 @@ export async function processProofJob(input: ProofJobInput) {
           ...(fdcValidationCount > 0 ? ["FDC_ADDRESS_VALIDITY"] : []),
           ...(fdcPaymentCount > 0 ? ["FDC_PAYMENT"] : []),
         ],
+        dataSources: [
+          ...(fdcValidationCount > 0 || fdcPaymentCount > 0 ? ["FDC"] : []),
+        ],
       });
     } else {
       reserveResult = confidentialInput.reserveResult;

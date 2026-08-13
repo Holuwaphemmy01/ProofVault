@@ -87,6 +87,7 @@ function mockedOptions(overrides: {
         getRequestFee: vi.fn(async () => 1n),
       },
       flareSystemsManager: {
+        getCurrentVotingEpochId: vi.fn(async () => 1),
         firstVotingRoundStartTs: vi.fn(async () => 1000n),
         votingEpochDurationSeconds: vi.fn(async () => 90n),
       },
@@ -94,6 +95,7 @@ function mockedOptions(overrides: {
         isFinalized: vi.fn(async () => true),
       },
       verification: {
+        fdcProtocolId: vi.fn(async () => 200),
         verifyAddressValidity: vi.fn(async () => true),
         verifyPayment: vi.fn(async () => overrides.verifyProof ?? true),
       },

@@ -12,11 +12,13 @@ const registryAbi = ["function getContractAddressByName(string _name) external v
 const hubAbi = ["function requestAttestation(bytes _data) external payable"] as const;
 const feeAbi = ["function getRequestFee(bytes _data) external view returns (uint256)"] as const;
 const systemsAbi = [
+  "function getCurrentVotingEpochId() external view returns (uint32)",
   "function firstVotingRoundStartTs() external view returns (uint256)",
   "function votingEpochDurationSeconds() external view returns (uint256)",
 ] as const;
 const relayAbi = ["function isFinalized(uint256 _protocolId, uint256 _votingRoundId) external view returns (bool)"] as const;
 const verificationAbi = [
+  "function fdcProtocolId() external view returns (uint8)",
   "function verifyAddressValidity((bytes32[] merkleProof,(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,(string addressStr) requestBody,(bool isValid,string standardAddress,bytes32 standardAddressHash) responseBody) data) _proof) external view returns (bool)",
   "function verifyPayment((bytes32[] merkleProof,(bytes32 attestationType,bytes32 sourceId,uint64 votingRound,uint64 lowestUsedTimestamp,(bytes32 transactionId,uint256 inUtxo,uint256 utxo) requestBody,(uint64 blockNumber,uint64 blockTimestamp,bytes32 sourceAddressHash,bytes32 sourceAddressesRoot,bytes32 receivingAddressHash,bytes32 intendedReceivingAddressHash,int256 spentAmount,int256 intendedSpentAmount,int256 receivedAmount,int256 intendedReceivedAmount,bytes32 standardPaymentReference,bool oneToOne,uint8 status) responseBody) data) _proof) external view returns (bool)",
 ] as const;
@@ -33,17 +35,20 @@ export type FdcClientOptions = {
   verifierUrl?: string;
   daLayerUrl?: string;
   apiKey?: string;
+  contractRegistryAddress?: string;
   privateKey?: string;
   fetchFn?: typeof fetch;
   contracts?: Partial<{
     fdcHub: { requestAttestation(data: string, options: { value: bigint }): Promise<{ hash: string; wait(): Promise<{ blockNumber: number; hash?: string }> }> };
     feeConfigurations: { getRequestFee(data: string): Promise<bigint> };
     flareSystemsManager: {
+      getCurrentVotingEpochId?(): Promise<bigint | number>;
       firstVotingRoundStartTs(): Promise<bigint>;
       votingEpochDurationSeconds(): Promise<bigint>;
     };
     relay: { isFinalized(protocolId: number, roundId: number): Promise<boolean> };
     verification: {
+      fdcProtocolId(): Promise<bigint | number>;
       verifyAddressValidity(proof: AddressValidityProof): Promise<boolean>;
       verifyPayment(proof: PaymentProof): Promise<boolean>;
     };
@@ -59,6 +64,7 @@ export class FdcClient {
   private readonly verifierUrl: string;
   private readonly daLayerUrl: string;
   private readonly apiKey: string;
+  private readonly contractRegistryAddress: string;
   private readonly privateKey: string;
   private readonly pollIntervalMs: number;
   private readonly maxWaitMs: number;
@@ -75,7 +81,8 @@ export class FdcClient {
     this.fetchFn = options.fetchFn ?? fetch;
     this.verifierUrl = ensureTrailingSlash(options.verifierUrl ?? env.FDC_VERIFIER_URL);
     this.daLayerUrl = ensureTrailingSlash(options.daLayerUrl ?? env.FDC_DA_LAYER_URL);
-    this.apiKey = options.apiKey ?? env.FDC_API_KEY;
+    this.apiKey = (options.apiKey ?? env.FDC_API_KEY) || "00000000-0000-0000-0000-000000000000";
+    this.contractRegistryAddress = options.contractRegistryAddress ?? env.FDC_CONTRACT_REGISTRY_ADDRESS;
     this.privateKey = options.privateKey ?? env.WORKER_PRIVATE_KEY;
     this.pollIntervalMs = options.pollIntervalMs ?? env.FDC_POLL_INTERVAL_MS;
     this.maxWaitMs = options.maxWaitMs ?? env.FDC_MAX_WAIT_MS;
@@ -141,6 +148,10 @@ export class FdcClient {
       throw new Error("FDC verifier returned malformed abiEncodedRequest");
     }
 
+    if (data.status && data.status !== "VALID") {
+      throw new Error(`FDC verifier returned invalid request status: ${data.status}`);
+    }
+
     return data;
   }
 
@@ -149,9 +160,17 @@ export class FdcClient {
       throw new Error("WORKER_PRIVATE_KEY is required to submit FDC attestation requests");
     }
 
+    const fdcHubMetadata = await this.getContractMetadata("FdcHub", Boolean(this.contracts?.fdcHub));
     const fdcHub = await this.getFdcHub();
     const feeConfigurations = await this.getFeeConfigurations();
-    const requestFee = await feeConfigurations.getRequestFee(abiEncodedRequest);
+    let requestFee: bigint;
+
+    try {
+      requestFee = await feeConfigurations.getRequestFee(abiEncodedRequest);
+    } catch (error) {
+      throw new Error(`FDC request fee retrieval failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    }
+
     const tx = await fdcHub.requestAttestation(abiEncodedRequest, { value: requestFee });
     const receipt = await tx.wait();
     const block = await this.provider.getBlock(receipt.blockNumber);
@@ -164,16 +183,20 @@ export class FdcClient {
 
     return {
       requestTxHash: receipt.hash ?? tx.hash,
+      requestBlockNumber: receipt.blockNumber,
       roundId,
+      fdcHubAddress: fdcHubMetadata.address,
+      fdcHubAddressSource: fdcHubMetadata.source,
     };
   }
 
   async waitForRoundFinalization(roundId: number) {
     const relay = await this.getRelay();
+    const protocolId = await this.getFdcProtocolId();
     const deadline = Date.now() + this.maxWaitMs;
 
     while (Date.now() < deadline) {
-      if (await relay.isFinalized(200, roundId)) {
+      if (await relay.isFinalized(protocolId, roundId)) {
         return;
       }
 
@@ -186,12 +209,15 @@ export class FdcClient {
   async retrieveProof(abiEncodedRequest: string, roundId: number): Promise<FdcDaProofResponse> {
     const url = `${this.daLayerUrl}api/v1/fdc/proof-by-request-round-raw`;
     const deadline = Date.now() + this.maxWaitMs;
+    let lastError = "";
 
     while (Date.now() < deadline) {
       const response = await this.fetchFn(url, {
         method: "POST",
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
         },
         body: JSON.stringify({
           votingRoundId: roundId,
@@ -200,7 +226,10 @@ export class FdcClient {
       });
 
       if (!response.ok) {
-        throw new Error(`FDC DA layer request failed with status ${response.status}`);
+        const body = await response.text().catch(() => "");
+        lastError = `FDC DA layer request failed with status ${response.status}${body ? `: ${body}` : ""}`;
+        await sleep(Math.min(this.pollIntervalMs, 5000));
+        continue;
       }
 
       const proof = await response.json() as FdcDaProofResponse;
@@ -210,6 +239,10 @@ export class FdcClient {
       }
 
       await sleep(Math.min(this.pollIntervalMs, 5000));
+    }
+
+    if (lastError) {
+      throw new Error(lastError);
     }
 
     throw new Error("FDC proof was not available before timeout");
@@ -247,6 +280,10 @@ export class FdcClient {
   async verifyAddressValidityProof(proof: AddressValidityProof) {
     const verification = await this.getVerification();
     return Boolean(await verification.verifyAddressValidity(proof));
+  }
+
+  async getFdcVerificationMetadata() {
+    return this.getContractMetadata("FdcVerification", Boolean(this.contracts?.verification));
   }
 
   decodePaymentProof(proof: FdcDaProofResponse): PaymentProof {
@@ -297,15 +334,48 @@ export class FdcClient {
 
   private async calculateRoundId(blockTimestamp: number) {
     const manager = await this.getFlareSystemsManager();
+    const currentVotingEpochId = await manager.getCurrentVotingEpochId?.();
+
+    if (currentVotingEpochId !== undefined) {
+      return Number(currentVotingEpochId);
+    }
+
     const firstVotingRoundStartTs = await manager.firstVotingRoundStartTs();
     const votingEpochDurationSeconds = await manager.votingEpochDurationSeconds();
 
     return Number((BigInt(blockTimestamp) - firstVotingRoundStartTs) / votingEpochDurationSeconds);
   }
 
+  private async getFdcProtocolId() {
+    const verification = await this.getVerification();
+    return Number(await verification.fdcProtocolId());
+  }
+
+  private async getContractMetadata(name: string, injected = false) {
+    if (injected) {
+      return {
+        address: "injected",
+        source: "injected" as const,
+      };
+    }
+
+    const address = await this.getContractAddress(name);
+
+    return {
+      address,
+      source: "contract-registry" as const,
+    };
+  }
+
   private async getContractAddress(name: string) {
-    const registry = new Contract(env.FDC_CONTRACT_REGISTRY_ADDRESS, registryAbi, this.provider);
-    return registry.getContractAddressByName(name) as Promise<string>;
+    const registry = new Contract(this.contractRegistryAddress, registryAbi, this.provider);
+    const address = await registry.getContractAddressByName(name) as string;
+
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address) || address === "0x0000000000000000000000000000000000000000") {
+      throw new Error(`FDC contract ${name} could not be resolved from Contract Registry`);
+    }
+
+    return address;
   }
 
   private async getFdcHub(): Promise<NonNullable<FdcContracts["fdcHub"]>> {

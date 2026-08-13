@@ -9,12 +9,21 @@ vi.mock("../src/integrations/fdc/address-validity.service.js", () => ({
   requiresFdcAddressValidity: (chain: string) => chain.toLowerCase() === "xrpl",
   validateExternalAddress: vi.fn(async () => ({
     attestationType: "AddressValidity",
-    chain: "xrpl",
+    chain: "XRP",
     valid: true,
+    source: "FDC",
     roundId: 1,
+    votingRoundId: 1,
     requestTxHash: `0x${"56".repeat(32)}`,
+    requestBlockNumber: 10,
     proofAvailable: true,
+    proofVerified: true,
     verificationSource: "FDC",
+    fdcHubAddress: "injected",
+    fdcHubAddressSource: "injected",
+    fdcVerificationAddress: "injected",
+    fdcVerificationAddressSource: "injected",
+    verifiedAt: new Date(0).toISOString(),
     addressHash: `0x${"78".repeat(32)}`,
   })),
 }));
@@ -58,6 +67,7 @@ describe("worker FDC AddressValidity flow", () => {
     expect(result?.receipt?.verification).toMatchObject({
       verifiedWith: expect.arrayContaining(["FDC_ADDRESS_VALIDITY"]),
     });
+    expect(result?.receipt?.verification.dataSources).toEqual(expect.arrayContaining(["FDC"]));
     expect(serialized).not.toContain(xrplAddress);
     expect(serialized).not.toContain("walletAddress");
     expect(serialized).not.toContain("\"balance\"");
