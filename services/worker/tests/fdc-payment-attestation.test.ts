@@ -1,4 +1,4 @@
-import { AbiCoder } from "ethers";
+import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
 import { describe, expect, it, vi } from "vitest";
 import {
   verifyPaymentAttestation,
@@ -14,6 +14,8 @@ const paymentResponseType =
 const transactionId = `${"ab".repeat(32)}`;
 const alternateTransactionId = `0x${"cd".repeat(32)}`;
 const receivingAddressHash = `0x${"12".repeat(32)}`;
+const receivingAddress = "rJRaWUndd7MaQMAGZaxWginywNxEcSF3jt";
+const receivingAddressStandardHash = keccak256(toUtf8Bytes(receivingAddress));
 const standardPaymentReference = `0x${"34".repeat(32)}`;
 const receivedAmount = 100000000n;
 
@@ -140,9 +142,10 @@ describe("FDC Payment attestation", () => {
     const result = await verifyPaymentAttestation({
       chain: "XRP",
       transactionId: `0x${transactionId}`,
-      expectedDestination: receivingAddressHash,
+      expectedDestination: receivingAddress,
       expectedReference: standardPaymentReference,
     }, mockedOptions({
+      destinationHash: receivingAddressStandardHash,
       assertPrepareRequest: (body) => {
         prepareBody = body;
       },
@@ -169,6 +172,16 @@ describe("FDC Payment attestation", () => {
     expect(serialized).not.toContain(transactionId);
     expect(serialized).not.toContain("receivedAmount");
     expect(serialized).not.toContain("spentAmount");
+  });
+
+  it("accepts an expected destination hash when provided directly", async () => {
+    const result = await verifyPaymentAttestation({
+      chain: "XRP",
+      transactionId,
+      expectedDestination: receivingAddressHash,
+    }, mockedOptions());
+
+    expect(result.verified).toBe(true);
   });
 
   it("validates an expected received amount when provided", async () => {

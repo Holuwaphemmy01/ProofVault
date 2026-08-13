@@ -1,4 +1,5 @@
 import { sha256Hex } from "@proofvault/proof-payload";
+import { keccak256, toUtf8Bytes } from "ethers";
 import { FdcClient, type FdcClientOptions } from "./fdc-client.js";
 import type {
   PaymentAttestationInput,
@@ -123,7 +124,7 @@ function normalizeExpectedHash(value: string) {
     return normalized.toLowerCase();
   }
 
-  return sha256Hex(normalized).toLowerCase();
+  return keccak256(toUtf8Bytes(normalized)).toLowerCase();
 }
 
 function normalizeExpectedAmount(value: string) {
