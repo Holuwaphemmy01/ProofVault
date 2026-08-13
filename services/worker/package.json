@@ -13,6 +13,7 @@
     "ftso:test": "tsx scripts/test-ftso.ts",
     "fdc:address:test": "tsx scripts/test-fdc-address-validity.ts",
     "fdc:address-validity:test": "tsx scripts/test-fdc-address-validity.ts",
+    "fdc:payment:prepare:test": "tsx scripts/test-fdc-payment-prepare.ts",
     "fdc:payment:test": "tsx scripts/test-fdc-payment.ts",
     "fcc:threshold:test": "tsx scripts/test-fcc-threshold.ts"
   },

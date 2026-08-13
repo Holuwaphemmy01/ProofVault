@@ -12,8 +12,18 @@ const mocks = vi.hoisted(() => ({
     verified: true,
     transactionIdHash: `0x${"12".repeat(32)}`,
     requestTxHash: `0x${"34".repeat(32)}`,
+    requestBlockNumber: 10,
     roundId: 1,
+    votingRoundId: 1,
+    proofAvailable: true,
+    proofVerified: true,
+    source: "FDC",
     verificationSource: "FDC",
+    fdcHubAddress: "injected",
+    fdcHubAddressSource: "injected",
+    fdcVerificationAddress: "injected",
+    fdcVerificationAddressSource: "injected",
+    verifiedAt: new Date(0).toISOString(),
   })),
 }));
 
@@ -68,6 +78,7 @@ describe("worker FDC Payment flow", () => {
     expect(result?.receipt?.verification).toMatchObject({
       verifiedWith: expect.arrayContaining(["FDC_PAYMENT"]),
     });
+    expect(result?.receipt?.verification.dataSources).toEqual(expect.arrayContaining(["FDC"]));
     expect(serialized).not.toContain(transactionId);
     expect(serialized).not.toContain("paymentEvidence");
     expect(serialized).not.toContain("receivedAmount");

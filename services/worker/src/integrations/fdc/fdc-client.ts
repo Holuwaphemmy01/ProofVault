@@ -119,40 +119,97 @@ export class FdcClient {
     });
   }
 
+  async inspectPaymentPrepareRequest(input: {
+    verifierPath: string;
+    sourceId: "testXRP";
+    transactionId: string;
+    inUtxo?: string;
+    utxo?: string;
+  }) {
+    return this.inspectAttestationRequest({
+      verifierPath: input.verifierPath,
+      attestationType: "Payment",
+      sourceId: input.sourceId,
+      requestBody: {
+        transactionId: input.transactionId,
+        inUtxo: input.inUtxo ?? "0",
+        utxo: input.utxo ?? "0",
+      },
+    });
+  }
+
   private async prepareAttestationRequest(input: {
     verifierPath: string;
     attestationType: "AddressValidity" | "Payment";
     sourceId: string;
     requestBody: Record<string, unknown>;
   }): Promise<PreparedFdcRequest> {
+    const diagnostics = await this.inspectAttestationRequest(input);
+
+    if (!diagnostics.responseOk) {
+      throw new Error(`FDC verifier rejected ${input.attestationType} request: ${diagnostics.verifierMessage}`);
+    }
+
+    if (diagnostics.status && diagnostics.status !== "VALID") {
+      throw new Error(`FDC verifier returned invalid request status for ${input.attestationType}: ${diagnostics.status}`);
+    }
+
+    if (!isHex(diagnostics.abiEncodedRequest)) {
+      throw new Error(`FDC verifier response missing abiEncodedRequest for ${input.attestationType}; received keys: ${diagnostics.responseKeys.join(", ") || "none"}; message: ${diagnostics.verifierMessage}`);
+    }
+
+    return {
+      abiEncodedRequest: diagnostics.abiEncodedRequest,
+      status: diagnostics.status,
+    };
+  }
+
+  private async inspectAttestationRequest(input: {
+    verifierPath: string;
+    attestationType: "AddressValidity" | "Payment";
+    sourceId: string;
+    requestBody: Record<string, unknown>;
+  }) {
+    const payload = {
+      attestationType: toUtf8HexString(input.attestationType),
+      sourceId: toUtf8HexString(input.sourceId),
+      requestBody: input.requestBody,
+    };
     const response = await this.fetchFn(`${this.verifierUrl}verifier/${input.verifierPath}/${input.attestationType}/prepareRequest`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(this.apiKey ? { "X-API-KEY": this.apiKey } : {}),
       },
-      body: JSON.stringify({
-        attestationType: toUtf8HexString(input.attestationType),
-        sourceId: toUtf8HexString(input.sourceId),
-        requestBody: input.requestBody,
-      }),
+      body: JSON.stringify(payload),
     });
+    const contentType = response.headers.get("content-type") ?? "";
+    const body = await response.text();
+    const data = parseJsonObject(body);
+    const responseKeys = data ? Object.keys(data) : [];
+    const abiEncodedRequest = typeof data?.abiEncodedRequest === "string" ? data.abiEncodedRequest : undefined;
+    const status = typeof data?.status === "string" ? data.status : undefined;
+    const verifierMessage = safeVerifierMessage(data, body) ?? `HTTP ${response.status}`;
+    const verifierAccepted = response.ok && (!status || status === "VALID") && isHex(abiEncodedRequest);
 
-    if (!response.ok) {
-      throw new Error(`FDC verifier request failed with status ${response.status}`);
-    }
-
-    const data = await response.json() as PreparedFdcRequest;
-
-    if (!isHex(data.abiEncodedRequest)) {
-      throw new Error("FDC verifier returned malformed abiEncodedRequest");
-    }
-
-    if (data.status && data.status !== "VALID") {
-      throw new Error(`FDC verifier returned invalid request status: ${data.status}`);
-    }
-
-    return data;
+    return {
+      attestationType: input.attestationType,
+      sourceId: input.sourceId,
+      requestBody: input.requestBody,
+      requestBodyFields: Object.keys(input.requestBody),
+      verifierHttpStatus: response.status,
+      verifierContentType: contentType,
+      responseOk: response.ok,
+      verifierAccepted,
+      abiEncodedRequestPresent: typeof abiEncodedRequest === "string",
+      abiEncodedRequest,
+      abiEncodedRequestPreview: abiEncodedRequest ? previewHex(abiEncodedRequest) : undefined,
+      status,
+      responseKeys,
+      verifierMessage,
+      encodedAttestationType: payload.attestationType,
+      encodedSourceId: payload.sourceId,
+    };
   }
 
   async submitAttestationRequest(abiEncodedRequest: string) {
@@ -426,6 +483,46 @@ export function toUtf8HexString(value: string) {
 
 function isHex(value: unknown): value is string {
   return typeof value === "string" && /^0x[0-9a-fA-F]*$/.test(value);
+}
+
+function parseJsonObject(value: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safeVerifierMessage(data: Record<string, unknown> | undefined, rawBody: string) {
+  const candidates = [
+    data?.message,
+    data?.error,
+    data?.reason,
+    data?.details,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.slice(0, 500);
+    }
+  }
+
+  if (rawBody.trim() && rawBody.length < 500 && !rawBody.includes("PRIVATE KEY")) {
+    return rawBody.trim();
+  }
+
+  return undefined;
+}
+
+function previewHex(value: string) {
+  if (value.length <= 24) {
+    return value;
+  }
+
+  return `${value.slice(0, 12)}...${value.slice(-10)}`;
 }
 
 function sleep(ms: number) {

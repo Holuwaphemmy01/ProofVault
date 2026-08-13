@@ -146,14 +146,14 @@ describe("FDC AddressValidity integration", () => {
     await expect(validateExternalAddress({
       chain: "xrpl",
       address: xrplAddress,
-    }, mockedOptions({ verifierStatus: 500 }))).rejects.toThrow("verifier request failed");
+    }, mockedOptions({ verifierStatus: 500, verifierBody: { message: "verifier unavailable" } }))).rejects.toThrow("rejected AddressValidity request: verifier unavailable");
   });
 
   it("rejects when the verifier returns malformed request data", async () => {
     await expect(validateExternalAddress({
       chain: "xrpl",
       address: xrplAddress,
-    }, mockedOptions({ verifierBody: { abiEncodedRequest: "not-hex" } }))).rejects.toThrow("malformed abiEncodedRequest");
+    }, mockedOptions({ verifierBody: { abiEncodedRequest: "not-hex" } }))).rejects.toThrow("response missing abiEncodedRequest");
   });
 
   it("rejects when the verifier marks the prepared request invalid", async () => {

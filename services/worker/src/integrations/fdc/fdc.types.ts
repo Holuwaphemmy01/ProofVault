@@ -32,6 +32,7 @@ export type PaymentAttestationInput = {
   chain: "XRP";
   transactionId: string;
   expectedDestination?: string;
+  expectedAmount?: string;
   expectedReference?: string;
 };
 
@@ -41,8 +42,18 @@ export type PaymentAttestationResult = {
   verified: true;
   transactionIdHash: string;
   requestTxHash: string;
+  requestBlockNumber: number;
   roundId: number;
+  votingRoundId: number;
+  proofAvailable: true;
+  proofVerified: true;
+  source: "FDC";
   verificationSource: "FDC";
+  fdcHubAddress: string;
+  fdcHubAddressSource: "contract-registry" | "injected";
+  fdcVerificationAddress: string;
+  fdcVerificationAddressSource: "contract-registry" | "injected";
+  verifiedAt: string;
 };
 
 export type PreparedFdcRequest = {
