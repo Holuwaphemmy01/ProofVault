@@ -98,6 +98,8 @@ The previous RSA-OAEP/AES-GCM worker decryption path is retained only for `CONFI
 
 Current status: the `proofvault-threshold-extension` action runs through the Flare FCE/FCC scaffold `/action` wire shape locally, and the worker can consume its safe result with fallback disabled. The remaining step before marking FCC as real is deployment and registration through the official Coston2 FCC flow, then a successful live `fallbackUsed=false` execution.
 
+Deployment runbook: [FCC Coston2 Deployment](./fcc-coston2-deployment.md).
+
 ## ProofRegistry Contract Integration
 
 The ProofRegistry contract stores only the public proof result.

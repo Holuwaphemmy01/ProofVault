@@ -1,0 +1,12 @@
+{
+  "network": "coston2",
+  "chainId": 114,
+  "status": "pending-real-tee-deployment",
+  "extensionId": "",
+  "extensionCodeHash": "",
+  "extensionEndpoint": "",
+  "teeMachineId": "",
+  "registrationTxHashes": [],
+  "deployedAt": "",
+  "notes": "Populate only after official Flare FCC/FCE Coston2 deployment and real TEE registration succeed."
+}
