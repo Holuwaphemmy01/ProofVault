@@ -25,6 +25,8 @@ export async function verifyReserveThreshold(input: VerifyReserveThresholdInput)
   const mode = input.mode ?? env.FCC_MODE;
   const fallbackEnabled = input.fallbackEnabled ?? env.FCC_FALLBACK_ENABLED;
 
+  validateThresholdInput(input);
+
   if (mode === "local") {
     return runLocalFallback(input, fallbackEnabled);
   }
@@ -56,7 +58,9 @@ function runLocalFallback(input: FccThresholdRequest, fallbackEnabled: boolean):
     throw new Error("FCC local fallback is not enabled");
   }
 
-  const thresholdMet = input.assetValues.reduce((total, value) => total + value, 0) >= input.requiredThreshold;
+  const requiredThreshold = parseNonNegativeInteger(input.requiredThreshold, "requiredThreshold");
+  const total = input.assetValues.reduce((sum, value) => sum + parseNonNegativeInteger(value, "assetValues"), 0n);
+  const thresholdMet = total >= requiredThreshold;
   const outcome: ProofOutcome = thresholdMet ? "PASS" : "FAIL";
   const timestamp = Math.floor(Date.now() / 1000);
   const outputCommitment = sha256Hex(canonicalJson({
@@ -75,4 +79,34 @@ function runLocalFallback(input: FccThresholdRequest, fallbackEnabled: boolean):
     timestamp,
     computeSource: "local-fallback",
   };
+}
+
+function validateThresholdInput(input: FccThresholdRequest) {
+  if (!input.requestId.trim()) {
+    throw new Error("FCC threshold requestId is required");
+  }
+
+  const requiredThreshold = parseNonNegativeInteger(input.requiredThreshold, "requiredThreshold");
+
+  if (requiredThreshold <= 0n) {
+    throw new Error("FCC threshold requiredThreshold must be greater than zero");
+  }
+
+  if (input.assetValues.length === 0) {
+    throw new Error("FCC threshold assetValues must not be empty");
+  }
+
+  for (const value of input.assetValues) {
+    parseNonNegativeInteger(value, "assetValues");
+  }
+}
+
+function parseNonNegativeInteger(value: number | string, fieldName: string) {
+  const normalized = typeof value === "number" ? String(value) : value.trim();
+
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error(`FCC threshold ${fieldName} must be a non-negative integer`);
+  }
+
+  return BigInt(normalized);
 }

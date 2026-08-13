@@ -73,7 +73,7 @@ export async function calculatePrivateReserve(input: CalculatePrivateReserveInpu
       dataSources.add("MOCK_PRICE_FALLBACK");
     }
 
-    return balanceResult.balance * priceResult.price;
+    return Math.round(balanceResult.balance * priceResult.price).toString();
   }));
   const thresholdResult = await verifyReserveThreshold({
     requestId: input.proofRequestId,

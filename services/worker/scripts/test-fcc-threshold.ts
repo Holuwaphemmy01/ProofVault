@@ -5,19 +5,21 @@ dotenv.config();
 
 const result = await verifyReserveThreshold({
   requestId: process.env.FCC_TEST_REQUEST_ID ?? "proofvault-demo-request",
-  requiredThreshold: Number(process.env.FCC_TEST_THRESHOLD ?? 200000),
+  requiredThreshold: "1000000",
   assetValues: [
-    Number(process.env.FCC_TEST_ASSET_VALUE_1 ?? 120000),
-    Number(process.env.FCC_TEST_ASSET_VALUE_2 ?? 100000),
+    "650000",
+    "420000",
   ],
   commitment: process.env.FCC_TEST_COMMITMENT ?? `0x${"11".repeat(32)}`,
 });
 
 console.log(JSON.stringify({
+  mode: process.env.FCC_MODE ?? "live",
+  source: result.computeSource === "fcc" ? "FCC" : "LOCAL_FALLBACK_COMPUTE",
   outcome: result.outcome,
   thresholdMet: result.thresholdMet,
   outputCommitment: result.outputCommitment,
   executionReference: result.executionReference,
   extensionId: result.extensionId,
-  computeSource: result.computeSource,
+  fallbackUsed: result.computeSource !== "fcc",
 }, null, 2));

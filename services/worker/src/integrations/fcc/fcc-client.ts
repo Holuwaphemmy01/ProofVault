@@ -1,11 +1,12 @@
+import { randomBytes } from "crypto";
 import { env } from "../../lib/env.js";
 import type { ProofOutcome } from "../../types/worker.types.js";
 import type { EncryptedProofPayload } from "@proofvault/proof-payload";
 
 export type FccThresholdRequest = {
   requestId: string;
-  requiredThreshold: number;
-  assetValues: number[];
+  requiredThreshold: number | string;
+  assetValues: Array<number | string>;
   commitment: string;
 };
 
@@ -54,11 +55,11 @@ export class FccClient {
   }
 
   async verifyReserveThreshold(input: FccThresholdRequest): Promise<FccThresholdResponse> {
-    return this.postAction("VERIFY_RESERVE_THRESHOLD", "verifyReserveThreshold", input);
+    return this.postAction("PROOFVAULT_RESERVE", "VERIFY_RESERVE_THRESHOLD", input);
   }
 
   async executeConfidentialProof(input: FccConfidentialProofRequest): Promise<FccThresholdResponse> {
-    return this.postAction("VERIFY_CONFIDENTIAL_PROOF", "verifyReserveThreshold", {
+    return this.postAction("PROOFVAULT_RESERVE", "VERIFY_CONFIDENTIAL_PROOF", {
       proofRequestId: input.proofRequestId,
       onChainRequestId: input.onChainRequestId,
       projectSlug: input.projectSlug,
@@ -92,13 +93,7 @@ export class FccClient {
           "Content-Type": "application/json",
         },
         signal: controller.signal,
-        body: JSON.stringify({
-          extensionId: this.extensionId || undefined,
-          opType: "PROOFVAULT_RESERVE",
-          opCommand,
-          action,
-          input,
-        }),
+        body: JSON.stringify(buildAction(opCommand, action, input)),
       });
 
       if (!response.ok) {
@@ -159,6 +154,14 @@ function unwrapResult(raw: unknown): unknown {
   }
 
   const value = raw as Record<string, unknown>;
+  if (typeof value.data === "string") {
+    if (typeof value.status === "number" && value.status !== 1) {
+      throw new Error(typeof value.log === "string" ? value.log : "FCC extension action failed");
+    }
+
+    return decodeHexJson(value.data);
+  }
+
   return value.result ?? value.output ?? value.data ?? raw;
 }
 
@@ -176,6 +179,60 @@ function assertNoPrivateValueLeak(result: unknown) {
 function resolveActionUrl(endpoint: string) {
   const trimmed = endpoint.replace(/\/$/, "");
   return trimmed.endsWith("/action") ? trimmed : `${trimmed}/action`;
+}
+
+function buildAction(opType: string, opCommand: string, input: unknown) {
+  const instructionId = `0x${randomBytes(32).toString("hex")}`;
+  const originalMessage = utf8ToHex(JSON.stringify(input));
+  const dataFixed = {
+    instructionId,
+    teeId: `0x${"00".repeat(20)}`,
+    timestamp: Math.floor(Date.now() / 1000),
+    rewardEpochId: 0,
+    opType: stringToBytes32Hex(opType),
+    opCommand: stringToBytes32Hex(opCommand),
+    cosigners: [],
+    cosignersThreshold: 0,
+    originalMessage,
+    additionalFixedMessage: "0x",
+  };
+
+  return {
+    data: {
+      id: instructionId,
+      type: "instruction",
+      submissionTag: "submit",
+      message: utf8ToHex(JSON.stringify(dataFixed)),
+    },
+    additionalVariableMessages: [],
+    timestamps: [],
+    additionalActionData: "0x",
+    signatures: [],
+  };
+}
+
+function decodeHexJson(value: string) {
+  if (value === "0x") {
+    return undefined;
+  }
+
+  return JSON.parse(Buffer.from(value.replace(/^0x/i, ""), "hex").toString("utf8")) as unknown;
+}
+
+function utf8ToHex(value: string) {
+  return `0x${Buffer.from(value, "utf8").toString("hex")}`;
+}
+
+function stringToBytes32Hex(value: string) {
+  const buffer = Buffer.alloc(32);
+  const encoded = Buffer.from(value, "utf8");
+
+  if (encoded.length > 32) {
+    throw new Error(`FCC op identifier is too long: ${value}`);
+  }
+
+  encoded.copy(buffer);
+  return `0x${buffer.toString("hex")}`;
 }
 
 function isBytes32(value: unknown): value is string {

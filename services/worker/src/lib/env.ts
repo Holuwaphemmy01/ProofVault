@@ -3,6 +3,22 @@ import { z } from "zod";
 
 dotenv.config();
 
+const booleanEnv = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === "true") {
+      return true;
+    }
+
+    if (normalized === "false") {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean());
+
 const envSchema = z.object({
   WORKER_PORT: z.coerce.number().int().positive().default(4100),
   NODE_ENV: z.string().default("development"),
@@ -13,9 +29,9 @@ const envSchema = z.object({
   CONFIDENTIAL_INPUT_MODE: z.enum(["fcc", "local-dev"]).default("fcc"),
   PROOFVAULT_REGISTRY_ADDRESS: z.string().default(""),
   CHAIN_ID: z.coerce.number().int().positive().default(31337),
-  MOCK_CONFIDENTIAL_COMPUTE: z.coerce.boolean().default(true),
+  MOCK_CONFIDENTIAL_COMPUTE: booleanEnv.default(true),
   FTSO_NETWORK: z.string().default("coston2"),
-  FTSO_FALLBACK_ENABLED: z.coerce.boolean().default(false),
+  FTSO_FALLBACK_ENABLED: booleanEnv.default(false),
   COSTON2_RPC_URL: z.string().default(""),
   FTSO_PRICE_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   FTSOV2_ADDRESS: z.string().default("0x3d893C53D9e8056135C26C8c638B76C8b60Df726"),
@@ -29,7 +45,7 @@ const envSchema = z.object({
   FCC_MODE: z.enum(["live", "local"]).default("live"),
   FCC_EXTENSION_ENDPOINT: z.string().default(""),
   FCC_EXTENSION_ID: z.string().default(""),
-  FCC_FALLBACK_ENABLED: z.coerce.boolean().default(false),
+  FCC_FALLBACK_ENABLED: booleanEnv.default(false),
   FCC_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 });
 

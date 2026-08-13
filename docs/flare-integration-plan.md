@@ -13,7 +13,7 @@ ProofVault is a confidential cross-chain proof-of-reserves platform built for Fl
 | FTSO | Real integration for 1-2 price feeds, starting with FLR/USD and BTC/USD. | Value reserve assets for threshold comparison. | Static demo prices only if live feed fails. |
 | FDC AddressValidity | Real AddressValidity attestation. | Validate submitted reserve addresses. | Labelled demo validation if live request or proof retrieval fails. |
 | FDC Payment | Real Payment attestation. | Verify external-chain payment evidence connected to reserves. | Labelled demo payment evidence if live attestation fails. |
-| FCC | Real minimal FCC threshold extension. | Calculate whether verified reserve values meet the required threshold. | Labelled local worker calculation only when explicitly enabled. |
+| FCC | Scaffolded minimal threshold extension; Coston2 FCC deployment pending. | Calculate whether verified reserve values meet the required threshold. | Labelled local worker calculation only when explicitly enabled. |
 | ProofRegistry contract | Real contract write for public proof result. | Anchor the proof hash and status publicly. | Local/mock contract reference only if testnet transaction fails. |
 | Public verifier page | Real public display of proof result. | Show reserve status without private reserve composition. | Demo-mode public result clearly labelled if live services fail. |
 
@@ -59,7 +59,7 @@ The public page must not expose private treasury movement or exact reserve compo
 
 ## FCC Integration Plan
 
-ProofVault uses a real minimal FCC threshold extension for the MVP:
+ProofVault has a scaffold-compatible minimal FCC threshold extension for the MVP:
 
 ```text
 proofvault-threshold-extension
@@ -78,7 +78,7 @@ The extension receives confidential inputs:
 - `commitment`
 - `requestId`
 
-In live/demo mode, ProofVault uses `CONFIDENTIAL_INPUT_MODE=fcc`. The encrypted proof payload is treated as an opaque confidential input package for the FCC extension, and the ordinary backend/API/worker process must not decrypt or persist plaintext reserve data.
+In live/demo mode, ProofVault should use `CONFIDENTIAL_INPUT_MODE=fcc`. The encrypted proof payload is treated as an opaque confidential input package for the FCC extension, and the ordinary backend/API/worker process must not decrypt or persist plaintext reserve data.
 
 The extension computes:
 
@@ -95,6 +95,8 @@ The extension returns only:
 It must not return wallet-by-wallet balances, exact asset values, aggregate reserve value, treasury strategy, or private reserve composition.
 
 The previous RSA-OAEP/AES-GCM worker decryption path is retained only for `CONFIDENTIAL_INPUT_MODE=local-dev` tests and local development. It is not described as an FCC or TEE guarantee.
+
+Current status: the `proofvault-threshold-extension` action runs through the Flare FCE/FCC scaffold `/action` wire shape locally, and the worker can consume its safe result with fallback disabled. The remaining step before marking FCC as real is deployment and registration through the official Coston2 FCC flow, then a successful live `fallbackUsed=false` execution.
 
 ## ProofRegistry Contract Integration
 
@@ -124,7 +126,7 @@ Do not store:
 4. User adds payment transaction evidence.
 5. FDC Payment validates the payment evidence.
 6. FTSO reads real price feeds for selected assets.
-7. FCC computes whether the reserve threshold is met.
+7. FCC computes whether the reserve threshold is met after the Coston2 extension is deployed; until then, only explicitly labelled local fallback may be used.
 8. Backend receives threshold result and proof hash.
 9. ProofRegistry stores public proof result.
 10. Public verifier views reserve status without seeing private reserve composition.
